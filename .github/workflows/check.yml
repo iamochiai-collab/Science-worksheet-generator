@@ -1,0 +1,25 @@
+name: check
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - name: build
+        run: python3 tools/build.py
+      - name: docs/index.html が最新か
+        run: git diff --exit-code docs/index.html
+      - name: 問題の検査
+        run: node tools/test/generators.js build/test.html all 60
+      - name: 理科の問題の検査(答え・図・数の組み合わせ)
+        run: node tools/rika/check.js build/test.html 80
