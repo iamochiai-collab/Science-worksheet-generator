@@ -36,7 +36,7 @@ const pw = (() => { try { return require('playwright'); } catch (e) { return req
   }, Number(n));
   console.log('generators', res.n, 'problems', res.out.length);
   for (const x of res.out.slice(0, 60)) console.log(' ', x);
-  const small = Object.entries(res.stat).filter(([k, v]) => v < 4 && !k.includes('Fig'));
+  const small = Object.entries(res.stat).filter(([k, v]) => v < 4 && !k.includes('Fig') && !k.startsWith('sum.'));
   if (small.length) console.log('問題の種類が少ない:', small.map(([k, v]) => `${k}=${v}`).join(' '));
   if (errs.length) console.log('page errors', errs.slice(0, 5));
   await b.close();

@@ -9,6 +9,9 @@
 //   1|〜は（　　　）です。|答え    （　　　）が答えの四角になる。2つ以上あるときは 答えを 、で区切る
 //   2|問い|=正しいもの|ちがうもの|ちがうもの   えらぶ問題(ア・イ・ウ…に並べかえる)
 //   2|問い|>1番目|2番目|3番目    じゅんばんに並べる問題
+//   2|〜（　　　）〜（　　　）〜|答え1|答え2|-ちがうことば   〔ことば〕からえらぶ穴うめ(「-」はまぎらわしいことば)
+//   1|?文|○                      正しければ○、まちがっていれば×(答えは ○ か ×)
+//   2|!指示文|もの=○|もの=×|…      いくつかのものに ○・× をつける(4〜5こえらんで出す)
 // 行の先頭の数字は むずかしさ(1:★、2:★★、3:★★★)。
 var r0lib = [];
 var RK = (() => {
@@ -34,7 +37,11 @@ var RK = (() => {
       const lv = Number(cells[0]);
       if (!(lv >= 1 && lv <= 3)) throw new Error("むずかしさがない: " + line);
       const q = cells[1], rest = cells.slice(2);
-      if (rest[0] && rest[0].startsWith("=")) out.push({ lv, type: "choice", q, ok: rest[0].slice(1), ng: rest.slice(1) });
+      const blanks = (q.match(/（[　 ]{2,}）/g) || []).length;
+      if (q.startsWith("?")) out.push({ lv, type: "tf", q: q.slice(1), a: rest[0] });
+      else if (q.startsWith("!")) out.push({ lv, type: "tfList", q: q.slice(1), list: rest.map((x) => { const i = x.lastIndexOf("="); return [x.slice(0, i), x.slice(i + 1)]; }) });
+      else if (blanks >= 2 || rest.some((x) => x.startsWith("-"))) out.push({ lv, type: "bank", q, ans: rest.filter((x) => !x.startsWith("-")), dummy: rest.filter((x) => x.startsWith("-")).map((x) => x.slice(1)) });
+      else if (rest[0] && rest[0].startsWith("=")) out.push({ lv, type: "choice", q, ok: rest[0].slice(1), ng: rest.slice(1) });
       else if (rest[0] && rest[0].startsWith(">")) out.push({ lv, type: "order", q, seq: [rest[0].slice(1), ...rest.slice(1)] });
       else out.push({ lv, type: "qa", q, a: rest.join("|") });
     }
@@ -52,8 +59,19 @@ var RK = (() => {
     return pool[pool.length - 1];
   }
   const optLine = (opts) => opts.map((o, i) => `${LET[i]}　${o}`).join("　　");
-  function render(it, rng) {
+  // kids:1・2年(分かち書き)用のことば
+  function render(it, rng, kids) {
     if (it.type === "qa") return { text: it.q, a: it.a };
+    if (it.type === "tf") return { text: `（　　）${it.q}[[br]]${kids ? "〔ただしければ ○、まちがって いれば ×〕" : "〔{正|ただ}しければ○、まちがっていれば×〕"}`, a: it.a };
+    if (it.type === "tfList") {
+      const pick = rng.shuffle(it.list).slice(0, Math.min(it.list.length, 5));
+      return { text: `${it.q}[[br]]${pick.map(([w], i) => `${LET[i]}（　　）${w}`).join("　")}`, a: pick.map(([, m]) => m).join("、"), wide: true };
+    }
+    if (it.type === "bank") {
+      // 〔ことば〕から えらんで（　）に書く。ことばは 同じものを1回だけ出す
+      const words = rng.shuffle([...new Set([...it.ans, ...it.dummy])]);
+      return { text: `${kids ? "あう ことばを、したの 〔　〕から えらんで かきましょう。" : "あてはまることばを、{下|した}の〔　〕からえらんで{書|か}きましょう。"}[[br]]${it.q}[[br]]〔 ${words.join(kids ? " ・ " : "・")} 〕`, a: it.ans.join("、"), wide: true };
+    }
     if (it.type === "choice") {
       const opts = rng.shuffle([it.ok, ...it.ng]);
       return { text: `${it.q}[[br]]${optLine(opts)}`, a: LET[opts.indexOf(it.ok)], wide: true };
@@ -75,7 +93,7 @@ var RK = (() => {
         let pool = items.filter((x) => x.lv <= p.max);
         if (!pool.length) pool = items;
         const it = pickW(rng, pool, p.max);
-        const r = render(it, rng);
+        const r = render(it, rng, o.kids);
         // 問題を全部使いきったら、同じ問題も出せるようにする(round)
         const round = ctx && Number.isInteger(ctx.index) ? Math.floor(ctx.index / pool.length) : 0;
         return { key: `${id}:${items.indexOf(it)}#${round}`, text: r.text, wide: true, answer: { display: r.a }, workspace: { type: "none" }, meta: { lv: it.lv } };
