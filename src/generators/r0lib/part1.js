@@ -63,7 +63,7 @@ var RK = (() => {
   // kids:1・2年(分かち書き)用のことば
   function render(it, rng, kids, p) {
     if (it.type === "qa") return { text: it.q, a: it.a };
-    if (it.type === "tf") return { text: `（　　）${it.q}[[br]]${kids ? "〔ただしければ ○、まちがって いれば ×〕" : "〔{正|ただ}しければ○、まちがっていれば×〕"}`, a: it.a };
+    if (it.type === "tf") return { text: p && p.compact ? `（　　）${it.q}` : `（　　）${it.q}[[br]]${kids ? "〔ただしければ ○、まちがって いれば ×〕" : "〔{正|ただ}しければ○、まちがっていれば×〕"}`, a: it.a };
     if (it.type === "tfList") {
       const pick = rng.shuffle(it.list).slice(0, Math.min(it.list.length, 5));
       return { text: `${it.q}[[br]]${pick.map(([w], i) => `${LET[i]}（　　）${w}`).join("　")}`, a: pick.map(([, m]) => m).join("、"), wide: true };
@@ -72,9 +72,9 @@ var RK = (() => {
       // 〔ことば〕から えらんで（　）に書く。ことばは 同じものを1回だけ出す
       const optN = p && p.opts !== undefined ? p.opts : 4;
       // ★3:〔ことば〕を出さずに書いて答える。★1:まぎらわしいことばを1つだけ
-      if (optN === 0 && it.ans.length >= 2) return { text: `${kids ? "（　）に あう ことばを かきましょう。" : "（　）にあてはまることばを{書|か}きましょう。"}[[br]]${it.q}`.replace(/（　）に/, "（ ）に"), a: it.ans.join("、"), wide: true };
+      if (optN === 0 && it.ans.length >= 2) return { text: p && p.compact ? it.q : `${kids ? "（　）に あう ことばを かきましょう。" : "（　）にあてはまることばを{書|か}きましょう。"}[[br]]${it.q}`.replace(/（　）に/, "（ ）に"), a: it.ans.join("、"), wide: true };
       const words = rng.shuffle([...new Set([...it.ans, ...(optN === 3 ? rng.shuffle(it.dummy).slice(0, 1) : it.dummy)])]);
-      return { text: `${kids ? "あう ことばを、したの 〔　〕から えらんで かきましょう。" : "あてはまることばを、{下|した}の〔　〕からえらんで{書|か}きましょう。"}[[br]]${it.q}[[br]]〔 ${words.join(kids ? " ・ " : "・")} 〕`, a: it.ans.join("、"), wide: true };
+      return { text: `${p && p.compact ? "" : (kids ? "あう ことばを、したの 〔　〕から えらんで かきましょう。" : "あてはまることばを、{下|した}の〔　〕からえらんで{書|か}きましょう。") + "[[br]]"}${it.q}[[br]]〔 ${words.join(kids ? " ・ " : "・")} 〕`, a: it.ans.join("、"), wide: true };
     }
     if (it.type === "choice") {
       // ★3:「どれ」とたずねていない短い答えは、選択肢なしで書いて答える。★1:選択肢を3つまで
@@ -356,20 +356,39 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
   }
 
   // ===== ことば・しくみの問題 =====
+  // 練習プリント用:問題の形のなかま
+  const WHY = /なぜ|{理由|りゆう}|どうして|どのように|どうすれば|どうしたら|ちがい/;
+  function catOf(it) {
+    if (it.type === "tf") return "tf";
+    if (it.type === "tfList") return "tfl";
+    if (it.type === "bank") return "bank";
+    if (it.type === "choice" || it.type === "order") return "pick";
+    if (WHY.test(noRuby(it.q)) && [...noRuby(it.a)].length >= 8) return "why";
+    return it.optable ? "pick" : "word";
+  }
   function bank(id, src, o = {}) {
     const items = parse(src);
     for (const it of items) it.id = id;
     const cands = candidatesOf(items);
     for (const it of items) it.optable = optionable(it, cands);
+    for (const it of items) it.cat = catOf(it);
     return {
       id,
       instruction: o.inst === undefined ? "{次|つぎ}の{問|と}いに{答|こた}えましょう。" : o.inst,
       defaults: { max: 1 },
       levels: LV,
+      // 練習プリント:この形の問題があるか
+      has: (cat) => items.some((x) => x.cat === cat),
       generate(rng, p, ctx) {
         let pool = items.filter((x) => x.lv <= p.max);
         if (!pool.length) pool = items;
-        if (p.opts === 3) {
+        if (p.only) {
+          // 練習プリント:形をしぼる(その難易度にないときは、ほかの難易度からも)
+          pool = pool.filter((x) => x.cat === p.only);
+          if (!pool.length) pool = items.filter((x) => x.cat === p.only);
+          if (!pool.length) throw new Error(`${id}: ${p.only} の{問題|もんだい}がない`);
+        }
+        if (p.opts === 3 && !p.only) {
           const op = pool.filter((x) => x.optable);
           if (op.length >= 4) pool = op;
         }
@@ -377,7 +396,10 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
         const r = withOptions(render(it, rng, o.kids || /^s\d\./.test(id), p), it, rng, p, cands, o.kids || /^s\d\./.test(id));
         // 問題を全部使いきったら、同じ問題も出せるようにする(round)
         const round = ctx && Number.isInteger(ctx.index) ? Math.floor(ctx.index / pool.length) : 0;
-        const pic = o.pic === false || !picScope(id) ? "" : picOf(it.q, o.pic || PIC_DEF[id]);
+        const pic = o.pic === false || !picScope(id) || p.compact ? "" : picOf(it.q, o.pic || PIC_DEF[id]);
+        if (p.compact) {
+          if (it.type === "tf") return { key: `${id}:${items.indexOf(it)}#${round}`, text: r.text, wide: false, cols: 2, answer: { display: r.a }, workspace: { type: "none" }, meta: { lv: it.lv } };
+        }
         return { key: `${id}:${items.indexOf(it)}#${round}`, text: r.text, wide: true, answer: { display: r.a }, workspace: { type: "none" }, ...(pic ? { pic } : {}), meta: { lv: it.lv } };
       },
       size: items.length
@@ -430,7 +452,7 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
         const r = make(rng, p);
         // 数の組み合わせが少ない問題もあるので、o.n 問(ふつう 6問)ごとに同じ問題をゆるす
         const round = ctx && Number.isInteger(ctx.index) ? Math.floor(ctx.index / (o.n || 6)) : 0;
-        return { key: `${id}:${r.key ?? noRuby(r.text)}#${round}`, text: r.text, wide: r.wide !== false, answer: { display: r.a }, workspace: { type: "none" }, work: r.work ?? o.work ?? 22, plainBox: true, meta: {} };
+        return { key: `${id}:${r.key ?? noRuby(r.text)}#${round}`, text: r.text, wide: r.wide !== false, answer: { display: r.a }, workspace: { type: "none" }, work: p.compact ? 12 : r.work ?? o.work ?? 22, plainBox: true, meta: {} };
       }
     };
   }
@@ -491,7 +513,7 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
 
   // ===== 学年のデータ =====
   // units: [id, 単元名, 分野, [topic, …]]   topic: [小単元名, 部品, 種類("w"|"f"|"d"), {weight}]
-  const KIND = { w: ["word", "test"], f: ["figure", "test"], d: ["drill", "test"] };
+  const KIND = { w: ["word", "test", "practice"], f: ["figure", "test", "practice"], d: ["drill", "test", "practice"] };
   function grade(g, note, units) {
     return {
       grade: g,
@@ -534,7 +556,7 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
       }
     }
     items.push({ t: "raw", svg: raw }, ...lab, ...(o.extra || []));
-    return { type: "draw", w: padL + W + padR, h: H + top * 2, scaleK: o.k || 1.2, items };
+    return { type: "draw", w: padL + W + padR, h: H + top * 2, scaleK: o.k || 1.1, items };
   }
   // 絵をならべた図(じゅんばん・えらぶ問題)。names の下に ア・イ… をつける
   function picRow(names, size = 24, o = {}) {
@@ -546,5 +568,19 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
     });
     return { type: "draw", w: 4 + names.length * (size + gap) - gap, h: size + (o.letters === false ? 4 : 11), scaleK: o.k || 1.1, items };
   }
-  return { PIC_SRC, picSrc, img, picHtml, labeled, picRow, LET, LV, noRuby, parse, bank, figs, calc, grade, T, fig, line, arrow, arrowHead, rect, circle, path, poly, emo, tag, mark, C, graph, table, svgEsc, rnd };
+  // ===== 練習プリントの組み立て(ほかの理科プリントにならって:図 → ことば → ○× → えらぶ → 計算 → 記述) =====
+  // 1まいに 答えが12〜15こ入るように、形ごとの問題数を決める
+  function practicePlan(level, kids) {
+    const L = level === "basic" ? 0 : level === "normal" ? 1 : 2;
+    return [
+      { from: "figure", n: 1, inst: null },
+      { from: "word", only: "bank", n: 1, inst: kids ? "あう ことばを、したの 〔　〕から えらんで かきましょう。" : L === 2 ? "（ ）にあてはまることばを{書|か}きましょう。" : "あてはまることばを、{下|した}の〔　〕からえらんで{書|か}きましょう。" },
+      { from: "word", only: "tf", n: kids ? 2 : 4, inst: kids ? "ただしい ものには ○、まちがって いる ものには ×を かきましょう。" : "{正|ただ}しいものには○、まちがっているものには×を{書|か}きましょう。" },
+      { from: "word", only: "tfl", n: kids ? 0 : 1, inst: null },
+      { from: "word", only: "pick", n: kids ? 2 : 3, inst: kids ? "つぎの もんだいに こたえましょう。" : L === 2 ? "{次|つぎ}の{問|と}いに、ことばで{答|こた}えましょう。" : "{次|つぎ}の{問|と}いに、{記号|きごう}で{答|こた}えましょう。" },
+      { from: "drill", n: 1, inst: "{次|つぎ}の{計算|けいさん}をしましょう。" },
+      { from: "word", only: L === 0 ? "word" : "why", n: 1, inst: kids ? "つぎの もんだいに こたえましょう。" : "{次|つぎ}の{問|と}いに{答|こた}えましょう。" }
+    ];
+  }
+  return { practicePlan, PIC_SRC, picSrc, img, picHtml, labeled, picRow, LET, LV, noRuby, parse, bank, figs, calc, grade, T, fig, line, arrow, arrowHead, rect, circle, path, poly, emo, tag, mark, C, graph, table, svgEsc, rnd };
 })();

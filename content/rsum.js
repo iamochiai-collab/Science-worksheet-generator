@@ -553,7 +553,7 @@ var rsum = (() => {
     const gen = RK.bank(`sum.${uid}`, src, { inst: sei ? "つぎの もんだいに こたえましょう。" : "次の問いに答えましょう。", kids: sei });
     out.push(gen);
     const label = sei ? "まとめ(ことばを えらぶ・○×)" : "まとめ(ことばをえらぶ・○×)";
-    unit.topics.push({ label, generator: gen.id, kinds: ["word", "test"] });
+    unit.topics.push({ label, generator: gen.id, kinds: ["word", "test", "practice"] });
   }
   return out;
 })();

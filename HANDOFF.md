@@ -19,6 +19,7 @@
   - 問題のよこの絵は `r0lib.js` の `PICS`(問いのことば→絵の名前)。イラストにない名前は絵文字のまま出る
   - `RK.labeled(名前, はばmm, [[x, y, "L"か"R", 記号], …])` … 図に ア・イ… と引き出し線をつける(x, y は assets/fig の画像の点)
   - `RK.picRow([名前, …])` … 絵をならべて下に ア・イ… をつける(じゅんばん・えらぶ問題)
+- 練習プリント(kind `practice`):`RK.practicePlan(level, kids)` の順に、bank の問題を形(`cat`:bank・tf・tfl・pick・why・word)でしぼって作る。template の buildSheet の `kind === "practice"`(`tools/rika/patch_practice.py`)
 - 図の中の SVG に日本語を直接書かない(ふりがなの記法が入るため)。ことばは `T(x, y, ことば)` で書く
 - 文の中に「□」を書かない(答えの四角になってしまう)
 - 読みのまちがい(例:日かげ、金星)は `tools/rika/yomi.txt` に `ことば=かきかた` で足す。`tools/rika/yomi-report.txt` に自動でつけた読みの一覧が出る

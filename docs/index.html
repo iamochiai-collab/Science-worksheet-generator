@@ -32953,7 +32953,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     // kids:1・2年(分かち書き)用のことば
     function render(it, rng, kids, p) {
       if (it.type === "qa") return { text: it.q, a: it.a };
-      if (it.type === "tf") return { text: `（　　）${it.q}[[br]]${kids ? "〔ただしければ ○、まちがって いれば ×〕" : "〔{正|ただ}しければ○、まちがっていれば×〕"}`, a: it.a };
+      if (it.type === "tf") return { text: p && p.compact ? `（　　）${it.q}` : `（　　）${it.q}[[br]]${kids ? "〔ただしければ ○、まちがって いれば ×〕" : "〔{正|ただ}しければ○、まちがっていれば×〕"}`, a: it.a };
       if (it.type === "tfList") {
         const pick = rng.shuffle(it.list).slice(0, Math.min(it.list.length, 5));
         return { text: `${it.q}[[br]]${pick.map(([w], i) => `${LET[i]}（　　）${w}`).join("　")}`, a: pick.map(([, m]) => m).join("、"), wide: true };
@@ -32962,9 +32962,9 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
         // 〔ことば〕から えらんで（　）に書く。ことばは 同じものを1回だけ出す
         const optN = p && p.opts !== undefined ? p.opts : 4;
         // ★3:〔ことば〕を出さずに書いて答える。★1:まぎらわしいことばを1つだけ
-        if (optN === 0 && it.ans.length >= 2) return { text: `${kids ? "（　）に あう ことばを かきましょう。" : "（　）にあてはまることばを{書|か}きましょう。"}[[br]]${it.q}`.replace(/（　）に/, "（ ）に"), a: it.ans.join("、"), wide: true };
+        if (optN === 0 && it.ans.length >= 2) return { text: p && p.compact ? it.q : `${kids ? "（　）に あう ことばを かきましょう。" : "（　）にあてはまることばを{書|か}きましょう。"}[[br]]${it.q}`.replace(/（　）に/, "（ ）に"), a: it.ans.join("、"), wide: true };
         const words = rng.shuffle([...new Set([...it.ans, ...(optN === 3 ? rng.shuffle(it.dummy).slice(0, 1) : it.dummy)])]);
-        return { text: `${kids ? "あう ことばを、したの 〔　〕から えらんで かきましょう。" : "あてはまることばを、{下|した}の〔　〕からえらんで{書|か}きましょう。"}[[br]]${it.q}[[br]]〔 ${words.join(kids ? " ・ " : "・")} 〕`, a: it.ans.join("、"), wide: true };
+        return { text: `${p && p.compact ? "" : (kids ? "あう ことばを、したの 〔　〕から えらんで かきましょう。" : "あてはまることばを、{下|した}の〔　〕からえらんで{書|か}きましょう。") + "[[br]]"}${it.q}[[br]]〔 ${words.join(kids ? " ・ " : "・")} 〕`, a: it.ans.join("、"), wide: true };
       }
       if (it.type === "choice") {
         // ★3:「どれ」とたずねていない短い答えは、選択肢なしで書いて答える。★1:選択肢を3つまで
@@ -33246,20 +33246,39 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     }
 
     // ===== ことば・しくみの問題 =====
+    // 練習プリント用:問題の形のなかま
+    const WHY = /なぜ|{理由|りゆう}|どうして|どのように|どうすれば|どうしたら|ちがい/;
+    function catOf(it) {
+      if (it.type === "tf") return "tf";
+      if (it.type === "tfList") return "tfl";
+      if (it.type === "bank") return "bank";
+      if (it.type === "choice" || it.type === "order") return "pick";
+      if (WHY.test(noRuby(it.q)) && [...noRuby(it.a)].length >= 8) return "why";
+      return it.optable ? "pick" : "word";
+    }
     function bank(id, src, o = {}) {
       const items = parse(src);
       for (const it of items) it.id = id;
       const cands = candidatesOf(items);
       for (const it of items) it.optable = optionable(it, cands);
+      for (const it of items) it.cat = catOf(it);
       return {
         id,
         instruction: o.inst === undefined ? "{次|つぎ}の{問|と}いに{答|こた}えましょう。" : o.inst,
         defaults: { max: 1 },
         levels: LV,
+        // 練習プリント:この形の問題があるか
+        has: (cat) => items.some((x) => x.cat === cat),
         generate(rng, p, ctx) {
           let pool = items.filter((x) => x.lv <= p.max);
           if (!pool.length) pool = items;
-          if (p.opts === 3) {
+          if (p.only) {
+            // 練習プリント:形をしぼる(その難易度にないときは、ほかの難易度からも)
+            pool = pool.filter((x) => x.cat === p.only);
+            if (!pool.length) pool = items.filter((x) => x.cat === p.only);
+            if (!pool.length) throw new Error(`${id}: ${p.only} の{問題|もんだい}がない`);
+          }
+          if (p.opts === 3 && !p.only) {
             const op = pool.filter((x) => x.optable);
             if (op.length >= 4) pool = op;
           }
@@ -33267,7 +33286,10 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
           const r = withOptions(render(it, rng, o.kids || /^s\d\./.test(id), p), it, rng, p, cands, o.kids || /^s\d\./.test(id));
           // 問題を全部使いきったら、同じ問題も出せるようにする(round)
           const round = ctx && Number.isInteger(ctx.index) ? Math.floor(ctx.index / pool.length) : 0;
-          const pic = o.pic === false || !picScope(id) ? "" : picOf(it.q, o.pic || PIC_DEF[id]);
+          const pic = o.pic === false || !picScope(id) || p.compact ? "" : picOf(it.q, o.pic || PIC_DEF[id]);
+          if (p.compact) {
+            if (it.type === "tf") return { key: `${id}:${items.indexOf(it)}#${round}`, text: r.text, wide: false, cols: 2, answer: { display: r.a }, workspace: { type: "none" }, meta: { lv: it.lv } };
+          }
           return { key: `${id}:${items.indexOf(it)}#${round}`, text: r.text, wide: true, answer: { display: r.a }, workspace: { type: "none" }, ...(pic ? { pic } : {}), meta: { lv: it.lv } };
         },
         size: items.length
@@ -33320,7 +33342,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
           const r = make(rng, p);
           // 数の組み合わせが少ない問題もあるので、o.n 問(ふつう 6問)ごとに同じ問題をゆるす
           const round = ctx && Number.isInteger(ctx.index) ? Math.floor(ctx.index / (o.n || 6)) : 0;
-          return { key: `${id}:${r.key ?? noRuby(r.text)}#${round}`, text: r.text, wide: r.wide !== false, answer: { display: r.a }, workspace: { type: "none" }, work: r.work ?? o.work ?? 22, plainBox: true, meta: {} };
+          return { key: `${id}:${r.key ?? noRuby(r.text)}#${round}`, text: r.text, wide: r.wide !== false, answer: { display: r.a }, workspace: { type: "none" }, work: p.compact ? 12 : r.work ?? o.work ?? 22, plainBox: true, meta: {} };
         }
       };
     }
@@ -33381,7 +33403,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
 
     // ===== 学年のデータ =====
     // units: [id, 単元名, 分野, [topic, …]]   topic: [小単元名, 部品, 種類("w"|"f"|"d"), {weight}]
-    const KIND = { w: ["word", "test"], f: ["figure", "test"], d: ["drill", "test"] };
+    const KIND = { w: ["word", "test", "practice"], f: ["figure", "test", "practice"], d: ["drill", "test", "practice"] };
     function grade(g, note, units) {
       return {
         grade: g,
@@ -33424,7 +33446,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
         }
       }
       items.push({ t: "raw", svg: raw }, ...lab, ...(o.extra || []));
-      return { type: "draw", w: padL + W + padR, h: H + top * 2, scaleK: o.k || 1.2, items };
+      return { type: "draw", w: padL + W + padR, h: H + top * 2, scaleK: o.k || 1.1, items };
     }
     // 絵をならべた図(じゅんばん・えらぶ問題)。names の下に ア・イ… をつける
     function picRow(names, size = 24, o = {}) {
@@ -33436,7 +33458,21 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
       });
       return { type: "draw", w: 4 + names.length * (size + gap) - gap, h: size + (o.letters === false ? 4 : 11), scaleK: o.k || 1.1, items };
     }
-    return { PIC_SRC, picSrc, img, picHtml, labeled, picRow, LET, LV, noRuby, parse, bank, figs, calc, grade, T, fig, line, arrow, arrowHead, rect, circle, path, poly, emo, tag, mark, C, graph, table, svgEsc, rnd };
+    // ===== 練習プリントの組み立て(ほかの理科プリントにならって:図 → ことば → ○× → えらぶ → 計算 → 記述) =====
+    // 1まいに 答えが12〜15こ入るように、形ごとの問題数を決める
+    function practicePlan(level, kids) {
+      const L = level === "basic" ? 0 : level === "normal" ? 1 : 2;
+      return [
+        { from: "figure", n: 1, inst: null },
+        { from: "word", only: "bank", n: 1, inst: kids ? "あう ことばを、したの 〔　〕から えらんで かきましょう。" : L === 2 ? "（ ）にあてはまることばを{書|か}きましょう。" : "あてはまることばを、{下|した}の〔　〕からえらんで{書|か}きましょう。" },
+        { from: "word", only: "tf", n: kids ? 2 : 4, inst: kids ? "ただしい ものには ○、まちがって いる ものには ×を かきましょう。" : "{正|ただ}しいものには○、まちがっているものには×を{書|か}きましょう。" },
+        { from: "word", only: "tfl", n: kids ? 0 : 1, inst: null },
+        { from: "word", only: "pick", n: kids ? 2 : 3, inst: kids ? "つぎの もんだいに こたえましょう。" : L === 2 ? "{次|つぎ}の{問|と}いに、ことばで{答|こた}えましょう。" : "{次|つぎ}の{問|と}いに、{記号|きごう}で{答|こた}えましょう。" },
+        { from: "drill", n: 1, inst: "{次|つぎ}の{計算|けいさん}をしましょう。" },
+        { from: "word", only: L === 0 ? "word" : "why", n: 1, inst: kids ? "つぎの もんだいに こたえましょう。" : "{次|つぎ}の{問|と}いに{答|こた}えましょう。" }
+      ];
+    }
+    return { practicePlan, PIC_SRC, picSrc, img, picHtml, labeled, picRow, LET, LV, noRuby, parse, bank, figs, calc, grade, T, fig, line, arrow, arrowHead, rect, circle, path, poly, emo, tag, mark, C, graph, table, svgEsc, rnd };
   })();
 
   // add/r0lib2
@@ -37276,7 +37312,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
       const gen = RK.bank(`sum.${uid}`, src, { inst: sei ? "つぎの もんだいに こたえましょう。" : "{次|つぎ}の{問|と}いに{答|こた}えましょう。", kids: sei });
       out.push(gen);
       const label = sei ? "まとめ(ことばを えらぶ・○×)" : "まとめ(ことばをえらぶ・○×)";
-      unit.topics.push({ label, generator: gen.id, kinds: ["word", "test"] });
+      unit.topics.push({ label, generator: gen.id, kinds: ["word", "test", "practice"] });
     }
     return out;
   })();
@@ -37465,6 +37501,8 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     record: { label: "記録シート", sheetLabel: "{記録|きろく}シート", counts: null, defaultCount: null },
     // まとめプリント(くらしの数学):単元の小単元を順に 1問ずつ(計算は数問)、記録シートもふくめて 1つのプリントにする
     matome: { label: "まとめプリント", sheetLabel: "まとめプリント", counts: null, defaultCount: null },
+    // 練習プリント(理科):図・ことば・○×・えらぶ・計算・記述を1まいにまとめる
+    practice: { label: "練習プリント", sheetLabel: "{練習|れんしゅう}プリント", counts: null, defaultCount: null },
     test: { label: "単元まとめテスト", sheetLabel: "{単元|たんげん}まとめテスト", counts: null, defaultCount: null },
     yoji: { label: "プリント", sheetLabel: "", counts: [2, 3, 4, 6], defaultCount: 3 }
   };
@@ -37507,7 +37545,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
   }
   var UNIT_RUBY = {"g2-02": "たし{算|ざん}のひっ{算|さん}", "g2-03": "ひき{算|ざん}のひっ{算|さん}", "g2-04": "{長|なが}さのたんい", "g2-05": "３けたの{数|かず}", "g2-06": "{水|みず}のかさのたんい", "g2-07": "{時|じ}こくと{時間|じかん}", "g2-08": "{計算|けいさん}のくふう", "g2-09": "たし{算|ざん}とひき{算|ざん}のひっ{算|さん}", "g2-10": "{長方形|ちょうほうけい}と{正方形|せいほうけい}", "g2-11": "かけ{算|ざん}(1)", "g2-12": "かけ{算|ざん}(2)", "g2-13": "４けたの{数|かず}", "g2-14": "{長|なが}いものの{長|なが}さのたんい", "g2-15": "たし{算|ざん}とひき{算|ざん}", "g2-16": "{分数|ぶんすう}", "g2-17": "はこの{形|かたち}", "g3-01": "かけ{算|ざん}", "g3-02": "{時|じ}こくと{時間|じかん}のもとめ{方|かた}", "g3-03": "わり{算|ざん}", "g3-04": "たし{算|ざん}とひき{算|ざん}の{筆算|ひっさん}", "g3-05": "{長|なが}いものの{長|なが}さのはかり{方|かた}と{表|あらわ}し{方|かた}", "g3-06": "ぼうグラフと{表|ひょう}", "g3-07": "{暗算|あんざん}", "g3-08": "あまりのあるわり{算|ざん}", "g3-09": "{大|おお}きい{数|かず}のしくみ", "g3-10": "かけ{算|ざん}の{筆算|ひっさん}(1)", "g3-11": "{大|おお}きい{数|かず}のわり{算|ざん}、{分数|ぶんすう}とわり{算|ざん}", "g3-12": "{円|えん}と{球|きゅう}", "g3-13": "{小数|しょうすう}", "g3-14": "{重|おも}さのたんいとはかり{方|かた}", "g3-15": "{分数|ぶんすう}", "g3-16": "□を{使|つか}った{式|しき}", "g3-17": "かけ{算|ざん}の{筆算|ひっさん}(2)", "g3-17b": "{倍|ばい}の{計算|けいさん}", "g3-18": "{三角形|さんかくけい}と{角|かく}", "g4-01": "{大|おお}きい{数|かず}のしくみ", "g4-02": "{折|お}れ{線|せん}グラフと{表|ひょう}", "g4-03": "わり{算|ざん}の{筆算|ひっさん}(1)", "g4-04": "{角|かく}の{大|おお}きさ", "g4-05": "{小数|しょうすう}のしくみ", "g4-06": "わり{算|ざん}の{筆算|ひっさん}(2)", "g4-06b": "{倍|ばい}の{見方|みかた}", "g4-07": "がい{数|すう}の{表|あらわ}し{方|かた}と{使|つか}い{方|かた}", "g4-08": "{計算|けいさん}のきまり", "g4-09": "{垂直|すいちょく}、{平行|へいこう}と{四角形|しかくけい}", "g4-10": "{分数|ぶんすう}", "g4-11": "{変|か}わり{方|かた}{調|しら}べ", "g4-12": "{面積|めんせき}のくらべ{方|かた}と{表|あらわ}し{方|かた}", "g4-13": "{小数|しょうすう}のかけ{算|ざん}とわり{算|ざん}", "g4-14": "{直方体|ちょくほうたい}と{立方体|りっぽうたい}", "g5-01": "{整数|せいすう}と{小数|しょうすう}", "g5-02": "{直方体|ちょくほうたい}や{立方体|りっぽうたい}の{体積|たいせき}", "g5-03": "{比例|ひれい}", "g5-04": "{小数|しょうすう}のかけ{算|ざん}", "g5-05": "{小数|しょうすう}のわり{算|ざん}", "g5-05b": "{小数|しょうすう}の{倍|ばい}", "g5-06": "{合同|ごうどう}な{図形|ずけい}", "g5-07": "{図形|ずけい}の{角|かく}", "g5-08": "{偶数|ぐうすう}と{奇数|きすう}、{倍数|ばいすう}と{約数|やくすう}", "g5-09": "{分数|ぶんすう}と{小数|しょうすう}、{整数|せいすう}の{関係|かんけい}", "g5-10": "{分数|ぶんすう}のたし{算|ざん}とひき{算|ざん}", "g5-11": "{平均|へいきん}", "g5-12": "{単位量|たんいりょう}あたりの{大|おお}きさ", "g5-13": "{四角形|しかくけい}と{三角形|さんかくけい}の{面積|めんせき}", "g5-14": "{割合|わりあい}", "g5-15": "{帯|おび}グラフと{円|えん}グラフ", "g5-16": "{変|か}わり{方|かた}{調|しら}べ", "g5-17": "{正多角形|せいたかくけい}と{円周|えんしゅう}の{長|なが}さ", "g5-18": "{角柱|かくちゅう}と{円柱|えんちゅう}", "g6-01": "{対称|たいしょう}な{図形|ずけい}", "g6-02": "{文字|もじ}と{式|しき}", "g6-03": "{分数|ぶんすう}×{整数|せいすう}、{分数|ぶんすう}÷{整数|せいすう}、{分数|ぶんすう}×{分数|ぶんすう}", "g6-04": "{分数|ぶんすう}÷{分数|ぶんすう}", "g6-04b": "{分数|ぶんすう}の{倍|ばい}", "g6-05": "{比|ひ}", "g6-06": "{拡大図|かくだいず}と{縮図|しゅくず}", "g6-07": "データの{調|しら}べ{方|かた}", "g6-08": "{円|えん}の{面積|めんせき}", "g6-09": "{角柱|かくちゅう}と{円柱|えんちゅう}の{体積|たいせき}", "g6-10": "およその{面積|めんせき}と{体積|たいせき}", "g6-11": "{比例|ひれい}と{反比例|はんぴれい}", "g6-12": "{並|なら}べ{方|かた}と{組|く}み{合|あ}わせ{方|かた}", "g6-12b": "データを{使|つか}って {生活|せいかつ}を{見|み}なおそう", "g6-13": "{算数|さんすう}のしあげ"};
   // 小単元(単元の中の topics)。番号は 1 から。まとめテストは単元ぜんたいだけ
-  var topicKinds = (topic) => topic.kinds.filter((k) => k !== "test" && k !== "matome");
+  var topicKinds = (topic) => topic.kinds.filter((k) => k !== "test" && k !== "matome" && k !== "practice");
   // 小単元の名前を {漢字|かな} にする(ふりがな・習っていない漢字をひらがなにするため)
   var TOPIC_WORDS = {"読": "よ", "筆算": "ひっさん", "何十": "なんじゅう", "何百": "なんびゃく", "使": "つか", "暗算": "あんざん", "直角": "ちょっかく", "方眼": "ほうがん", "九九": "くく", "考": "かんが", "字": "じ", "数字": "すうじ", "終": "お", "変": "か", "棒": "ぼう", "二次元表": "{二次元|にじげん}{表|ひょう}", "整理": "せいり", "分度器": "ぶんどき", "角度": "かくど", "三角定規": "さんかくじょうぎ", "見積": "{見|み}{積|つ}", "見分": "{見|み}{分|わ}", "見取図": "みとりず", "見": "み", "順序": "じゅんじょ", "仮分数": "かぶんすう", "帯分数": "たいぶんすう", "帯": "おび", "積": "つ", "木": "き", "内": "うち", "概数": "がいすう", "決": "き", "三角": "さんかく", "公倍数": "こうばいすう", "公約数": "こうやくすう", "最小公倍数": "さいしょうこうばいすう", "最大公約数": "さいだいこうやくすう", "約分": "やくぶん", "約数": "やくすう", "異分母": "いぶんぼ", "混": "ま", "表示": "ひょうじ", "色": "いろ", "換算": "かんさん", "二重数直線": "にじゅうすうちょくせん", "百分率": "ひゃくぶんりつ", "歩合": "ぶあい", "場面": "ばめん", "縮尺": "しゅくしゃく", "縮図": "しゅくず", "拡大図": "かくだいず", "利用": "りよう", "代表値": "だいひょうち", "時期": "じき", "判断": "はんだん", "年": "ねん", "二次元": "にじげん"};
   var topicRuby = (label) => {
@@ -37619,6 +37657,37 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
           addSpread(topics, n, pts);
         }
       }
+    } else if (kind === "practice") {
+      // 練習プリント:RK.practicePlan の順に、形をしぼって問題を作る
+      // 1・2年と、1年の大きい字を使う段階(小学部)は、問題を少なめにする
+      const kids = gradeData.grade <= 2;
+      const pick = (k) => unit.topics.filter((t2) => (!subTopic || t2 === subTopic) && t2.kinds.includes(k));
+      let made = 0;
+      for (const step of RK.practicePlan(level, kids)) {
+        const tps = pick(step.from).filter((t2) => !step.only || getGenerator(t2.generator).has?.(step.only));
+        if (!tps.length) continue;
+        const probs = [];
+        for (let i = 0; i < step.n; i++) {
+          let pr = null, tp = null;
+          for (let t3 = 0; t3 < 60 && !pr; t3++) {
+            tp = rng.pick(tps);
+            const gen2 = getGenerator(tp.generator);
+            const p = { ...topicParams(tp, level), compact: true, ...(step.only ? { only: step.only } : {}) };
+            // index は 0 のまま(同じ問題をくり返さない)
+            const cand = gen2.generate(rng, p, { index: step.from === "word" ? 0 : i + t3, from });
+            if (used.has(cand.key)) continue;
+            pr = { ...cand, topic: tp.label, generator: gen2.id, points: null };
+          }
+          if (!pr) break;
+          used.add(pr.key);
+          probs.push(pr);
+        }
+        if (!probs.length) continue;
+        made += probs.length;
+        curGroup = step.from === "figure" ? "figure" : step.from === "drill" ? "drill" : "word";
+        sections.push({ instruction: step.inst, topic: probs[0].topic, problems: probs, pointsEach: null, group: curGroup });
+      }
+      if (!made) throw new Error("この単元には練習プリントがありません");
     } else if (kind === "matome") {
       // 順番は単元の小単元の順(本と同じ)。extra は、ページがあまったときに文章題・図をふやす数
       const tps = topicsOf("matome"), more = tps.map(() => 0);
@@ -44006,7 +44075,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
   function refreshCounts() {
     const k = KINDS9[el.kind.value];
     if (!k || !k.counts) {
-      fill2(el.count, [{ value: "", label: el.kind.value === "record" ? "ぜんぶ" : el.kind.value === "matome" ? "おまかせ" : "固定(100点)" }]);
+      fill2(el.count, [{ value: "", label: el.kind.value === "record" ? "ぜんぶ" : el.kind.value === "matome" ? "おまかせ" : el.kind.value === "practice" ? "おまかせ" : "固定(100点)" }]);
       el.count.disabled = true;
       return;
     }
@@ -44477,7 +44546,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
   var homeGrade = store.get("grade") !== null && GRADES[Number(store.get("grade"))] ? Number(store.get("grade")) : 3;
   var homeLevel = LEVELS[store.get("level")] ? store.get("level") : "basic";
   var SUB_KIND = { drill: "計算", word: "基本", figure: "図・実験", yoji: "え" };
-  var KIND_SHORT = { drill: "計算問題", word: "基本問題", figure: "図・実験", record: "記録シート", matome: "まとめプリント", test: "まとめテスト", yoji: "プリントを つくる" };
+  var KIND_SHORT = { practice: "練習プリント", drill: "計算問題", word: "基本問題", figure: "図・実験", record: "記録シート", matome: "まとめプリント", test: "まとめテスト", yoji: "プリントを つくる" };
   var homeEl = $("home");
   $("versionHome").textContent = versionLabel;
   // キャラクターのせりふとポーズ
