@@ -425,6 +425,12 @@ table.data.dense th, table.data.dense td { padding: 3pt 4pt; min-width: 26pt; }
 .sheet.grade-1 .item { min-height: 40pt; }
 .sheet.grade-1 .item-no { font-size: 13pt; min-width: 28pt; }
 .sheet.grade-1 .item-body { font-size: 22pt; letter-spacing: 1pt; white-space: nowrap; }
+/* 理科:1年(と特別支援の小学部)も、長い文は分かち書きのところで折り返す */
+.sheet.grade-1 .item-body { white-space: normal; }
+/* 理科:問題のよこのイラスト */
+.item.has-pic { position: relative; padding-right: 30mm; min-height: 24mm; }
+.item-pic { position: absolute; right: 0; top: 1mm; width: 26mm; height: 22mm; display: flex; align-items: center; justify-content: center; gap: 0.5mm; flex-wrap: nowrap; font-size: 24pt; line-height: 1; border: 1pt solid #cfe3ea; border-radius: 3mm; background: #fbfdfe; letter-spacing: 0; }
+.item-pic.two { font-size: 22pt; }
 .sheet.grade-7 .item-body, .sheet.grade-8 .item-body, .sheet.grade-9 .item-body { font-size: 14.5pt; letter-spacing: 0.3pt; }
 .sheet.grade-10 .item-body, .sheet.grade-11 .item-body, .sheet.grade-12 .item-body, .sheet.grade-13 .item-body, .sheet.grade-14 .item-body, .sheet.grade-15 .item-body { font-size: 13.5pt; letter-spacing: 0.2pt; }
 .sheet.grade-1 .item.has-figure .item-body { font-size: 17pt; letter-spacing: 1pt; line-height: 1.8; }
@@ -34632,7 +34638,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
           // 式は考えるスペース(か計算のます)があるときだけ書く
           const note = K ? noteHtml(K.note || (calcMm || gridWs ? K.work : "")) : "";
           return `
-        <li class="item ${p2.workspace?.type === "grid" ? "has-grid" : ""} ${p2.figure ? "has-figure" : ""}${p2.figure?.type === "hissan" ? " has-hissan" : ""}${tr ? " trace" : ""}">
+        <li class="item ${p2.workspace?.type === "grid" ? "has-grid" : ""} ${p2.figure ? "has-figure" : ""}${p2.figure?.type === "hissan" ? " has-hissan" : ""}${tr ? " trace" : ""}${p2.pic ? " has-pic" : ""}">${p2.pic ? `<span class="item-pic" aria-hidden="true">${esc2(p2.pic)}</span>` : ""}
           ${!p2.no && !String(a.text + tail).trim() ? "" : `<span class="item-head">${p2.no ? `<span class="item-no">(${p2.no})</span>` : ""}${p2.figure?.type === "hissan" ? "" : `<span class="item-body">${tk(a.text + tail)}</span>`}</span>`}
           ${fig(p2, K?.kfig)}
           ${calcMm ? calcHtml(calcMm, policy, p2.workspace?.type === "lines" ? "{考|かんが}え{方|かた}" : "", note) : ""}

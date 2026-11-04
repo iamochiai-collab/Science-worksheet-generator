@@ -425,6 +425,12 @@ table.data.dense th, table.data.dense td { padding: 3pt 4pt; min-width: 26pt; }
 .sheet.grade-1 .item { min-height: 40pt; }
 .sheet.grade-1 .item-no { font-size: 13pt; min-width: 28pt; }
 .sheet.grade-1 .item-body { font-size: 22pt; letter-spacing: 1pt; white-space: nowrap; }
+/* 理科:1年(と特別支援の小学部)も、長い文は分かち書きのところで折り返す */
+.sheet.grade-1 .item-body { white-space: normal; }
+/* 理科:問題のよこのイラスト */
+.item.has-pic { position: relative; padding-right: 30mm; min-height: 24mm; }
+.item-pic { position: absolute; right: 0; top: 1mm; width: 26mm; height: 22mm; display: flex; align-items: center; justify-content: center; gap: 0.5mm; flex-wrap: nowrap; font-size: 24pt; line-height: 1; border: 1pt solid #cfe3ea; border-radius: 3mm; background: #fbfdfe; letter-spacing: 0; }
+.item-pic.two { font-size: 22pt; }
 .sheet.grade-7 .item-body, .sheet.grade-8 .item-body, .sheet.grade-9 .item-body { font-size: 14.5pt; letter-spacing: 0.3pt; }
 .sheet.grade-10 .item-body, .sheet.grade-11 .item-body, .sheet.grade-12 .item-body, .sheet.grade-13 .item-body, .sheet.grade-14 .item-body, .sheet.grade-15 .item-body { font-size: 13.5pt; letter-spacing: 0.2pt; }
 .sheet.grade-1 .item.has-figure .item-body { font-size: 17pt; letter-spacing: 1pt; line-height: 1.8; }
@@ -32923,7 +32929,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
       }
       return pool[pool.length - 1];
     }
-    const optLine = (opts) => opts.map((o, i) => `${LET[i]}　${o}`).join("　　");
+    const optLine = (opts, kids) => opts.map((o, i) => `${LET[i]}　${o}`).join(kids || opts.join("").length > 34 ? "[[br]]" : "　　");
     // kids:1・2年(分かち書き)用のことば
     function render(it, rng, kids) {
       if (it.type === "qa") return { text: it.q, a: it.a };
@@ -32939,11 +32945,43 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
       }
       if (it.type === "choice") {
         const opts = rng.shuffle([it.ok, ...it.ng]);
-        return { text: `${it.q}[[br]]${optLine(opts)}`, a: LET[opts.indexOf(it.ok)], wide: true };
+        return { text: `${it.q}[[br]]${optLine(opts, kids)}`, a: LET[opts.indexOf(it.ok)], wide: true };
       }
       // ならべる問題:ばらばらにして記号をつけ、正しい順の記号を答える
       const opts = rng.shuffle(it.seq.slice());
-      return { text: `${it.q}[[br]]${optLine(opts)}`, a: it.seq.map((s) => LET[opts.indexOf(s)]).join("→"), wide: true };
+      return { text: `${it.q}[[br]]${optLine(opts, kids)}`, a: it.seq.map((s) => LET[opts.indexOf(s)]).join("→"), wide: true };
+    }
+
+    // ===== イラスト(絵文字)=====
+    // 小学校・生活科の問題には、問いの中のことばから絵をえらんで、問題のよこに出す(答えのことばからはえらばない)
+    const PICS = [
+      ["アサガオ", "🌺"], ["ヒマワリ", "🌻"], ["チューリップ", "🌷"], ["サクラ", "🌸"], ["ホウセンカ", "🌼"], ["ヘチマ", "🥒"], ["インゲンマメ", "🌱"], ["ドングリ", "🌰"], ["おちば", "🍂"], ["{落|お}ち{葉|ば}", "🍂"], ["もみじ", "🍁"],
+      ["モンシロチョウ", "🦋"], ["アゲハ", "🦋"], ["チョウ", "🦋"], ["よう{虫|むし}", "🐛"], ["さなぎ", "🐛"], ["アリ", "🐜"], ["テントウムシ", "🐞"], ["てんとうむし", "🐞"], ["バッタ", "🦗"], ["コオロギ", "🦗"], ["セミ", "🦗"], ["トンボ", "🦗"], ["カブトムシ", "🪲"], ["こん{虫|ちゅう}", "🐞"], ["クモ", "🕷️"], ["カタツムリ", "🐌"], ["ダンゴムシ", "🐛"],
+      ["メダカ", "🐟"], ["{魚|さかな}", "🐟"], ["さかな", "🐟"], ["ザリガニ", "🦞"], ["カエル", "🐸"], ["ヒキガエル", "🐸"], ["ツバメ", "🐦"], ["{鳥|とり}", "🐦"], ["ウサギ", "🐰"], ["イヌ", "🐶"], ["{犬|いぬ}", "🐶"],
+      ["ミニトマト", "🍅"], ["トマト", "🍅"], ["キュウリ", "🥒"], ["ナス", "🍆"], ["ピーマン", "🫑"], ["やさい", "🥕"], ["{野菜|やさい}", "🥕"],
+      ["たね", "🌱"], ["{芽|め}", "🌱"], ["{発芽|はつが}", "🌱"], ["{子葉|しよう}", "🌱"], ["{花|はな}", "🌼"], ["{葉|は}", "🍃"], ["はっぱ", "🍃"], ["{根|ね}", "🌱"], ["くき", "🌿"], ["{植物|しょくぶつ}", "🪴"], ["{木|き}", "🌳"],
+      ["じしゃく", "🧲"], ["{磁石|じしゃく}", "🧲"], ["{電磁石|でんじしゃく}", "🧲"], ["{方位|ほうい}じしん", "🧭"], ["{豆|まめ}{電球|でんきゅう}", "💡"], ["{明|あ}かり", "💡"], ["かん{電池|でんち}", "🔋"], ["{電池|でんち}", "🔋"], ["{電気|でんき}", "⚡"], ["{電流|でんりゅう}", "⚡"], ["{回路|かいろ}", "💡"], ["モーター", "⚙️"], ["{発電|はつでん}", "⚡"],
+      ["{太陽|たいよう}", "☀️"], ["{日|ひ}なた", "☀️"], ["{日光|にっこう}", "☀️"], ["かげ", "⛱️"], ["{月|つき}", "🌙"], ["{満月|まんげつ}", "🌕"], ["{星|ほし}", "⭐"], ["{雲|くも}", "☁️"], ["{雨|あめ}", "☔"], ["{台風|たいふう}", "🌀"], ["{天気|てんき}", "🌤️"], ["{気温|きおん}", "🌡️"], ["{温度|おんど}", "🌡️"], ["{雪|ゆき}", "⛄"], ["ゆき", "⛄"], ["{氷|こおり}", "🧊"], ["こおり", "🧊"], ["{冬|ふゆ}", "⛄"], ["{春|はる}", "🌸"], ["{夏|なつ}", "🌻"], ["{秋|あき}", "🍁"],
+      ["{火山|かざん}", "🌋"], ["ふん{火|ひ}", "🌋"], ["{地|じ}しん", "🏚️"], ["{地層|ちそう}", "🪨"], ["{化石|かせき}", "🦴"], ["{石灰|せっかい}{水|すい}", "🧪"], ["{石|いし}", "🪨"], ["{川|かわ}", "🏞️"], ["{流|なが}れる{水|みず}", "🏞️"], ["{海|うみ}", "🌊"],
+      ["かがみ", "🪞"], ["{虫|むし}めがね", "🔍"], ["けんび{鏡|きょう}", "🔬"], ["{温度|おんど}{計|けい}", "🌡️"], ["アルコールランプ", "🔥"], ["{燃|も}え", "🔥"], ["{燃|も}や", "🔥"], ["ろうそく", "🕯️"], ["{酸素|さんそ}", "💨"], ["{二酸化炭素|にさんかたんそ}", "💨"], ["{空気|くうき}", "💨"], ["{風|かぜ}", "🎐"], ["かぜ", "🎐"], ["ゴム", "🪀"], ["ふりこ", "⏱️"], ["てこ", "⚖️"], ["{重|おも}さ", "⚖️"], ["てんびん", "⚖️"],
+      ["{音|おと}", "🔔"], ["たいこ", "🥁"], ["{糸|いと}{電話|でんわ}", "📞"], ["{水|みず}よう{液|えき}", "🧪"], ["{水溶液|すいようえき}", "🧪"], ["リトマス{紙|し}", "🧪"], ["{食塩|しょくえん}", "🧂"], ["ミョウバン", "🧂"], ["{水|みず}じょう{気|き}", "💨"], ["ふっとう", "♨️"], ["{湯|ゆ}", "♨️"], ["{水|みず}", "💧"],
+      ["ほね", "🦴"], ["{骨|ほね}", "🦴"], ["きん{肉|にく}", "💪"], ["うで", "💪"], ["{心臓|しんぞう}", "❤️"], ["{心|こころ}ぞう", "❤️"], ["{血液|けつえき}", "🩸"], ["{肺|はい}", "🫁"], ["{呼吸|こきゅう}", "🫁"], ["{胃|い}", "🍙"], ["だ{液|えき}", "🍙"], ["{食|た}べ{物|もの}", "🍙"], ["{赤|あか}ちゃん", "👶"], ["{子|こ}ども", "👶"], ["{母親|ははおや}", "🤰"], ["{子宮|しきゅう}", "🤰"],
+      ["ほけんしつ", "🏥"], ["としょしつ", "📚"], ["としょかん", "📚"], ["きゅうしょく", "🍱"], ["せんせい", "🧑‍🏫"], ["こうちょう", "🧑‍🏫"], ["しょうぼう", "🚒"], ["ゆうびん", "📮"], ["てがみ", "📮"], ["こうばん", "👮"], ["おまわりさん", "👮"], ["びょういん", "🏥"], ["こうえん", "🌳"], ["しんごう", "🚦"], ["どうろ", "🚦"], ["あいさつ", "🙋"], ["てを あらう", "🧼"], ["{手|て}をあらう", "🧼"], ["がっこう", "🏫"], ["{学校|がっこう}", "🏫"],
+      ["ふうせん", "🎈"], ["かざぐるま", "🎐"], ["おもちゃ", "🧸"], ["くるま", "🚗"], ["{車|くるま}", "🚗"], ["いきもの", "🐾"], ["{生|い}き{物|もの}", "🐾"], ["どうぶつ", "🐾"], ["{動物|どうぶつ}", "🐾"], ["{森林|しんりん}", "🌳"], ["{地球|ちきゅう}", "🌏"], ["ごみ", "♻️"], ["リサイクル", "♻️"]
+    ].map(([w, e]) => [noRuby(w), e]).sort((a, b) => b[0].length - a[0].length);
+    const PIC_DEF = { "s1.school": "🏫", "s1.asagao": "🌺", "s1.creature": "🐾", "s1.season": "🍂", "s2.veg": "🥕", "s2.town": "🏘️", "s2.creature": "🐾", "s2.toy": "🧸", "sum.s1-01": "🏫", "sum.s1-02": "🌺", "sum.s1-03": "🐾", "sum.s1-04": "🍂", "sum.s2-01": "🥕", "sum.s2-02": "🏘️", "sum.s2-03": "🐾", "sum.s2-04": "🧸" };
+    const picScope = (id) => /^(s\d|r[3-6])\./.test(id) || /^sum\.(s\d|r[3-6])-/.test(id);
+    function picOf(q, def) {
+      let t = noRuby(q);
+      const out = [];
+      for (const [w, e] of PICS) {
+        if (out.length >= 2) break;
+        const i = t.indexOf(w);
+        if (i < 0) continue;
+        if (!out.includes(e)) out.push(e);
+        t = t.slice(0, i) + "　".repeat(w.length) + t.slice(i + w.length);
+      }
+      return out.length ? out.join("") : def || "";
     }
 
     // ===== ことば・しくみの問題 =====
@@ -32958,10 +32996,11 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
           let pool = items.filter((x) => x.lv <= p.max);
           if (!pool.length) pool = items;
           const it = pickW(rng, pool, p.max);
-          const r = render(it, rng, o.kids);
+          const r = render(it, rng, o.kids || /^s\d\./.test(id));
           // 問題を全部使いきったら、同じ問題も出せるようにする(round)
           const round = ctx && Number.isInteger(ctx.index) ? Math.floor(ctx.index / pool.length) : 0;
-          return { key: `${id}:${items.indexOf(it)}#${round}`, text: r.text, wide: true, answer: { display: r.a }, workspace: { type: "none" }, meta: { lv: it.lv } };
+          const pic = o.pic === false || !picScope(id) ? "" : picOf(it.q, o.pic || PIC_DEF[id]);
+          return { key: `${id}:${items.indexOf(it)}#${round}`, text: r.text, wide: true, answer: { display: r.a }, workspace: { type: "none" }, ...(pic ? { pic } : {}), meta: { lv: it.lv } };
         },
         size: items.length
       };
@@ -34715,7 +34754,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     return [burn, burnFig, breath, digest, blood, bodyFig, plantW, eco, moonSun, moonSunFig, strata, strataFig, land, lever, leverCalc, leverFigs, elec, solution, solFig, earth];
   })();
   var r6Grade = RK.grade(6, "{小学|しょうがく}6{年|ねん} {理科|りか}", [
-    ["r6-01", "ものの{燃|も}え{方|かた}", "{粒子|りゅうし}", [["{燃|も}え{方|かた}と{空気|くうき}", "r6.burn", "w"], ["{燃|も}える{前|まえ}と{後|ご}の{空気|くうき}", "r6.burnFig", "f"]]],
+    ["r6-01", "ものの{燃|も}え{方|ほう}", "{粒子|りゅうし}", [["{燃|も}え{方|かた}と{空気|くうき}", "r6.burn", "w"], ["{燃|も}える{前|まえ}と{後|ご}の{空気|くうき}", "r6.burnFig", "f"]]],
     ["r6-02", "{動物|どうぶつ}の{体|からだ}のはたらき", "{生命|せいめい}", [["{呼吸|こきゅう}", "r6.breath", "w"], ["{消化|しょうか}と{吸収|きゅうしゅう}", "r6.digest", "w"], ["{血液|けつえき}のはたらき", "r6.blood", "w"], ["{消化|しょうか}{管|かん}({図|ず})", "r6.bodyFig", "f"]]],
     ["r6-03", "{植物|しょくぶつ}の{体|からだ}のはたらき", "{生命|せいめい}", [["{水|みず}の{通|とお}り{道|みち}と{養分|ようぶん}", "r6.plantW", "w"]]],
     ["r6-04", "{生|い}き{物|もの}どうしのかかわり", "{生命|せいめい}", [["{食物|しょくもつ}{連|れん}さと{空気|くうき}・{水|みず}", "r6.eco", "w"]]],
@@ -38742,7 +38781,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
           // 式は考えるスペース(か計算のます)があるときだけ書く
           const note = K ? noteHtml(K.note || (calcMm || gridWs ? K.work : "")) : "";
           return `
-        <li class="item ${p2.workspace?.type === "grid" ? "has-grid" : ""} ${p2.figure ? "has-figure" : ""}${p2.figure?.type === "hissan" ? " has-hissan" : ""}${tr ? " trace" : ""}">
+        <li class="item ${p2.workspace?.type === "grid" ? "has-grid" : ""} ${p2.figure ? "has-figure" : ""}${p2.figure?.type === "hissan" ? " has-hissan" : ""}${tr ? " trace" : ""}${p2.pic ? " has-pic" : ""}">${p2.pic ? `<span class="item-pic" aria-hidden="true">${esc2(p2.pic)}</span>` : ""}
           ${!p2.no && !String(a.text + tail).trim() ? "" : `<span class="item-head">${p2.no ? `<span class="item-no">(${p2.no})</span>` : ""}${p2.figure?.type === "hissan" ? "" : `<span class="item-body">${tk(a.text + tail)}</span>`}</span>`}
           ${fig(p2, K?.kfig)}
           ${calcMm ? calcHtml(calcMm, policy, p2.workspace?.type === "lines" ? "{考|かんが}え{方|かた}" : "", note) : ""}

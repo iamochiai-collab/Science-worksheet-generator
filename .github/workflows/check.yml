@@ -23,3 +23,5 @@ jobs:
         run: node tools/test/generators.js build/test.html all 60
       - name: 理科の問題の検査(答え・図・数の組み合わせ)
         run: node tools/rika/check.js build/test.html 80
+      - name: 文が紙のはしで切れていないか
+        run: node tools/rika/textcheck.js build/test.html
