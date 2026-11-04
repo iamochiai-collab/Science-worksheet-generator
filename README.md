@@ -52,4 +52,4 @@ node tools/rika/render.js build/test.html r3-10 figure basic 2 1 out/a-   # 画�
 
 ## ライセンス
 
-プログラムは MIT ライセンスです(LICENSE)。`assets/chara/`(キャラクターの絵)は MIT の外です。
+プログラムは MIT ライセンスです(LICENSE)。`assets/chara/`(キャラクターの絵。理科プリント用のフラスコの子)は MIT の外です。
