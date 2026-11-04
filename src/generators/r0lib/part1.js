@@ -63,6 +63,10 @@ var RK = (() => {
   // kids:1・2年(分かち書き)用のことば
   function render(it, rng, kids, p) {
     if (it.type === "qa") return { text: it.q, a: it.a };
+    if (it.type === "tf" && it.alt) {
+      const f = rnd(rng) < 0.5;
+      return render({ ...it, alt: null, q: f ? rng.pick(it.alt) : it.q, a: f ? "×" : "○" }, rng, kids, p);
+    }
     if (it.type === "tf") return { text: p && p.compact ? `（　　）${it.q}` : `（　　）${it.q}[[br]]${kids ? "〔ただしければ ○、まちがって いれば ×〕" : "〔{正|ただ}しければ○、まちがっていれば×〕"}`, a: it.a };
     if (it.type === "tfList") {
       const pick = rng.shuffle(it.list).slice(0, Math.min(it.list.length, 5));
@@ -154,12 +158,13 @@ var RK = (() => {
   const SKIP_Q = /か、|なぜ|どうして|{理由|りゆう}|どのように|どうします|どうすれば|どうしたら|{書|か}きましょう|{答|こた}えましょう|ちがい|1つ/;
   const CHANGE = [["{大|おお}きくなる", "{小|ちい}さくなる"], ["ふえる", "へる"], ["{高|たか}くなる", "{低|ひく}くなる"], ["{長|なが}くなる", "{短|みじか}くなる"], ["{速|はや}くなる", "おそくなる"], ["{強|つよ}くなる", "{弱|よわ}くなる"], ["{上|あ}がる", "{下|さ}がる"], ["{明|あか}るくなる", "{暗|くら}くなる"], ["あたたかくなる", "つめたくなる"], ["{重|おも}くなる", "{軽|かる}くなる"], ["{多|おお}くなる", "{少|すく}なくなる"], ["{大|おお}きい", "{小|ちい}さい"], ["{高|たか}い", "{低|ひく}い"], ["{長|なが}い", "{短|みじか}い"], ["{速|はや}い", "おそい"], ["{多|おお}い", "{少|すく}ない"], ["{強|つよ}い", "{弱|よわ}い"], ["{明|あか}るい", "{暗|くら}い"]];
   const looksName = (a) => !/(る|い|た|ない|ます|です|だ|れる|する)$/.test(shortAns(a));
-  function changeOpts(okS) {
+  function changeOpts(okS, q = "") {
     for (const pair of CHANGE) {
       const k = pair.indexOf(okS);
       if (k >= 0) return [pair[1 - k], okS === "かわらない" || okS === "{変|か}わらない" ? pair[0] : "かわらない"];
     }
-    if (/^(かわらない|{変|か}わらない|{同|おな}じ)$/.test(okS)) return ["{大|おお}きくなる", "{小|ちい}さくなる"];
+    // 「かわらない」のときは、問いに合う変わり方を まちがいにする(重さ → 重くなる・軽くなる など)
+    if (/^(かわらない|{変|か}わらない|{同|おな}じ)$/.test(okS)) return /{重|おも}さ/.test(q) ? ["{重|おも}くなる", "{軽|かる}くなる"] : /{時間|じかん}|{長|なが}さ/.test(q) ? ["{長|なが}くなる", "{短|みじか}くなる"] : /{温度|おんど}|{気温|きおん}/.test(q) ? ["{高|たか}くなる", "{低|ひく}くなる"] : /{量|りょう}|{数|かず}/.test(q) ? ["ふえる", "へる"] : /{明|あか}るさ/.test(q) ? ["{明|あか}るくなる", "{暗|くら}くなる"] : ["{大|おお}きくなる", "{小|ちい}さくなる"];
     return null;
   }
   function numOpts(rng, okS) {
@@ -170,7 +175,9 @@ var RK = (() => {
     const cand = [...new Set([n * 2, n / 2, n + (dec ? 0.1 : 1) * (n >= 10 ? 10 : 1), n - (dec ? 0.1 : 1) * (n >= 10 ? 10 : 1), n * 3, n + (dec ? 0.2 : 2)].map((v) => +v.toFixed(dec)).filter((v) => v > 0 && v !== n && (dec || Number.isInteger(v))))];
     return rng.shuffle(cand).slice(0, 3).map(fmt);
   }
-  // ことばのなかま(同じなかまのことばを、まちがいの選択肢にする)
+  // ことばのなかま(同じなかまのことばを、まちがいの選択肢にする)。FAMR:ふりがなつきの形
+  const FAMR = new Map();
+  const famRuby = (w) => FAMR.get(w) || w;
   const FAM = `
 {東|ひがし},{西|にし},{南|みなみ},{北|きた}
 {春|はる},{夏|なつ},{秋|あき},{冬|ふゆ}
@@ -283,11 +290,11 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
 {回路|かいろ},{金|きん}ぞく
 {検|けん}{流|りゅう}{計|けい},{電流|でんりゅう}{計|けい},{電圧|でんあつ}{計|けい}
 {百葉箱|ひゃくようばこ},{温度|おんど}{計|けい},{方位|ほうい}じしん,{虫|むし}めがね,{台|だい}ばかり
-でんぷん,ヨウ{素|そ}{液|えき},{石灰|せっかい}{水|すい}
+ヨウ{素|そ}{液|えき},{石灰|せっかい}{水|すい},{食塩|しょくえん}{水|すい}
 {地層|ちそう},{化石|かせき},{火山灰|かざんばい},{断層|だんそう}
 れき,すな,どろ
-{食物|しょくもつ}{連|れん}さ,{呼吸|こきゅう},{消化|しょうか}
 {消化|しょうか},{吸収|きゅうしゅう},{呼吸|こきゅう}
+{食物|しょくもつ}{連|れん}さ,{呼吸|こきゅう},{消化|しょうか}
 はく{動|どう},{脈|みゃく}はく
 {蒸散|じょうさん},{気孔|きこう},{呼吸|こきゅう}
 てこ,{支点|してん},ふりこ
@@ -315,7 +322,7 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
 {電灯|でんとう},{電熱|でんねつ}{線|せん},せん{風|ふう}{機|き},スピーカー
 {地球|ちきゅう}{温暖|おんだん}{化|か},リサイクル
 {晴|は}れ,くもり,{雨|あめ}
-`.trim().split("\n").map((l) => l.split(",").map((w) => noRuby(w).trim()));
+`.trim().split("\n").map((l) => l.split(",").map((w) => (FAMR.has(noRuby(w).trim()) || FAMR.set(noRuby(w).trim(), w.trim()), noRuby(w).trim())));
   // 選択肢をつけられる問題か(★1 では、なるべく選んで答える問題を出す)
   function optionable(it, cands) {
     if (it.type !== "qa") return true;
@@ -329,13 +336,26 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
     if (!okS || /、/.test(okS) || [...okS].length > 18 || /（[　 ]{2,}）/.test(it.q) || SKIP_Q.test(q)) return r;
     let ng = null;
     if (/\d/.test(okS) && isNum(okS) && [...okS].length <= 10) ng = numOpts(rng, okS);
-    else if (changeOpts(okS)) ng = changeOpts(okS);
+    else ng = wrongOf(it, rng, cands, p.opts);
+    if (!ng) return r;
+    ng = rng.shuffle(ng).slice(0, p.opts - 1);
+    // 2つでひと組のことば(P波・S波、直列・並列など)は、2択でもよい
+    if (ng.length < 1 || (ng.length < 2 && !FAM.some((f) => f.includes(okS)))) return r;
+    const okText = ok.replace(/\(.*?\)|（.*?）/g, "").trim();
+    const opts = rng.shuffle([okText, ...ng]);
+    return { text: `${it.q}[[br]]${optLine(opts, kids)}`, a: LET[opts.indexOf(okText)], wide: true };
+  }
+  // まちがいのことば(なかまのことば・反対の変わり方・同じ小単元の答え)
+  function wrongOf(it, rng, cands, nOpts = 3) {
+    const ok = String(it.a), okS = shortAns(ok), q = noRuby(it.q);
+    let ng = null;
+    if (changeOpts(okS, q)) ng = changeOpts(okS, q);
     else {
       const fams = FAM.filter((f) => f.includes(okS));
       if (fams.length) {
         // いちばん合うなかま(まちがいが3つ以上とれるもの)を使う。同じ意味のことば(ちっ素・窒素など)がまざらないように、なかまはまぜない
-        const pick = fams.find((f) => f.filter((w) => w !== okS && !q.includes(w)).length >= Math.max(2, (p.opts || 3) - 1)) || fams[0];
-        ng = pick.filter((w) => w !== okS && !q.includes(w));
+        const pick = fams.find((f) => f.filter((w) => w !== okS && !q.includes(w)).length >= Math.max(2, (nOpts || 3) - 1)) || fams[0];
+        ng = pick.filter((w) => w !== okS && !q.includes(w)).map(famRuby);
       } else if (/^c\dr\./.test(it.id || "") && NAME_Q.test(q) && looksName(ok) && [...okS].length <= 10 && !/ところ|とき|から|ため|こと|よう/.test(okS)) {
         // 中学:同じ小単元のことばの答えを、まちがいの選択肢にする
         const L = [...okS].length, ascii = /^[\x20-\x7e₀-₉⁺⁻²³→＋]+$/.test(okS);
@@ -346,18 +366,53 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
         ng = rng.shuffle(pool).sort((a, b) => Math.abs([...shortAns(a)].length - L) - Math.abs([...shortAns(b)].length - L)).slice(0, 4).map((c) => c.replace(/\(.*?\)|（.*?）/g, "").trim());
       }
     }
-    if (!ng) return r;
-    ng = rng.shuffle(ng).slice(0, p.opts - 1);
-    // 2つでひと組のことば(P波・S波、直列・並列など)は、2択でもよい
-    if (ng.length < 1 || (ng.length < 2 && !FAM.some((f) => f.includes(okS)))) return r;
-    const okText = ok.replace(/\(.*?\)|（.*?）/g, "").trim();
-    const opts = rng.shuffle([okText, ...ng]);
-    return { text: `${it.q}[[br]]${optLine(opts, kids)}`, a: LET[opts.indexOf(okText)], wide: true };
+    return ng && ng.length ? ng : null;
+  }
+  // ===== 名前をきく問題から ○× の問題を作る =====
+  // 「〜を何といいますか。|A」→「〜を「A」といいます。」(正しい)/「〜を「B」といいます。」(まちがい。B はなかまのことば)
+  const ENDS = [
+    [/(\{何\|なん\}|なん)と(\s?)いいますか。$/, (A, m) => `「${A}」と${m[2]}いいます。`],
+    [/(は|とは)(\s?)(\{何\|なに\}|\{何\|なん\}|なに|なん)ですか。$/, (A, m) => `${m[1]}${m[2]}「${A}」です。`],
+    [/(は|が)(、?\s?)どう\s?なりますか。$/, (A, m) => { const v = politeOf(A); return v ? `${m[1]}${m[2]}${v}。` : null; }]
+  ];
+  function politeOf(v) {
+    if (/なる$/.test(v)) return v.replace(/なる$/, "なります");
+    if (/わらない$/.test(v)) return v.replace(/わらない$/, "わりません");
+    if (/(ふえ|へ)る$/.test(v)) return v.replace(/(ふえ|へ)る$/, (x) => x === "ふえる" ? "ふえます" : "へります");
+    if (/ない$/.test(v)) return null;
+    if (/がる$/.test(v)) return v.replace(/がる$/, "がります");
+    return null;
+  }
+  function deriveTf(items, cands) {
+    const out = [];
+    const fake = { next: () => 0.5, int: (a) => a, pick: (x) => x[0], shuffle: (x) => x.slice() };
+    items.forEach((it, i) => {
+      if (it.type !== "qa") return;
+      const q = noRuby(it.q), okS = shortAns(it.a);
+      if (!okS || /、|，/.test(okS) || [...okS].length > 14 || isNum(okS) || /（[　 ]{2,}）/.test(it.q) || SKIP_Q.test(q) || /どれ|どちら|{次|つぎ}の|{下|した}の|{図|ず}/.test(q)) return;
+      const end = ENDS.find(([re]) => re.test(it.q));
+      if (!end) return;
+      const ng = wrongOf(it, fake, cands, 3);
+      if (!ng) return;
+      const A = String(it.a).replace(/\(.*?\)|（.*?）/g, "").trim();
+      const m = end[0].exec(it.q), head = it.q.slice(0, m.index);
+      // 「あたたかさは あたたかくなります」のような文はつくらない
+      if (noRuby(head).includes(shortAns(A).slice(0, 3))) return;
+      const tq = end[1](A, m);
+      const fq = ng.map((B) => end[1](B, m)).filter(Boolean);
+      if (!tq || !fq.length) return;
+      out.push({ lv: it.lv, type: "tf", q: head + tq, alt: fq.map((x) => head + x), a: "○", derived: true, src: i, id: it.id });
+    });
+    return out;
   }
 
   // ===== ことば・しくみの問題 =====
   // 練習プリント用:問題の形のなかま
   const WHY = /なぜ|{理由|りゆう}|どうして|どのように|どうすれば|どうしたら|ちがい/;
+  // 文で書いて答える問題(答えは「(例)」にする。式や記号を書く問題はのぞく)
+  const FREE_Q = /なぜ|{理由|りゆう}|どうして|どのように|どうすれば|どうしたら|ちがい|1つ|2つ|3つ|{書|か}きましょう|わかること|わかりますか|くふう|{説明|せつめい}|{考|かんが}えられ|{利点|りてん}|よいですか/;
+  const isFree = (q, a, min = 6) => FREE_Q.test(noRuby(q)) && !/{式|しき}|{記号|きごう}|{化学|かがく}{反応|はんのう}|{単位|たんい}|{何|なん}と\s?いい|{何|なん}という|なんと\s?いい|{何|なん}ですか/.test(noRuby(q)) && [...noRuby(a)].length >= min && !/^[ア-エ]$/.test(noRuby(a));
+  const exAns = (q, a, min) => isFree(q, a, min) && !/^\({例|れい}\)/.test(String(a)) ? `({例|れい}) ${a}` : String(a);
   function catOf(it) {
     if (it.type === "tf") return "tf";
     if (it.type === "tfList") return "tfl";
@@ -370,6 +425,7 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
     const items = parse(src);
     for (const it of items) it.id = id;
     const cands = candidatesOf(items);
+    if (o.tf !== false) items.push(...deriveTf(items, cands));
     for (const it of items) it.optable = optionable(it, cands);
     for (const it of items) it.cat = catOf(it);
     return {
@@ -388,6 +444,11 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
           if (!pool.length) pool = items.filter((x) => x.cat === p.only);
           if (!pool.length) throw new Error(`${id}: ${p.only} の{問題|もんだい}がない`);
         }
+        if (!p.only) {
+          // ふつうのプリント:○×(作ったものもふくむ)は 5問に1問くらい
+          const tfs = pool.filter((x) => x.type === "tf"), rest = pool.filter((x) => x.type !== "tf");
+          pool = rest.length >= 4 && (!tfs.length || rnd(rng) >= 0.2) ? rest : tfs.length ? tfs : pool;
+        }
         if (p.opts === 3 && !p.only) {
           const op = pool.filter((x) => x.optable);
           if (op.length >= 4) pool = op;
@@ -396,13 +457,17 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
         const r = withOptions(render(it, rng, o.kids || /^s\d\./.test(id), p), it, rng, p, cands, o.kids || /^s\d\./.test(id));
         // 問題を全部使いきったら、同じ問題も出せるようにする(round)
         const round = ctx && Number.isInteger(ctx.index) ? Math.floor(ctx.index / pool.length) : 0;
+        const ki = it.derived ? it.src : items.indexOf(it);
+        // 書いて答える文の答えは「(例)」にする
+        if (it.type === "qa" && r.a === it.a) r.a = exAns(it.q, it.a, 6);
         const pic = o.pic === false || !picScope(id) || p.compact ? "" : picOf(it.q, o.pic || PIC_DEF[id]);
         if (p.compact) {
-          if (it.type === "tf") return { key: `${id}:${items.indexOf(it)}#${round}`, text: r.text, wide: false, cols: 2, answer: { display: r.a }, workspace: { type: "none" }, meta: { lv: it.lv } };
+          if (it.type === "tf") return { key: `${id}:${ki}#${round}`, text: r.text, wide: false, cols: 2, answer: { display: r.a }, workspace: { type: "none" }, meta: { lv: it.lv } };
         }
-        return { key: `${id}:${items.indexOf(it)}#${round}`, text: r.text, wide: true, answer: { display: r.a }, workspace: { type: "none" }, ...(pic ? { pic } : {}), meta: { lv: it.lv } };
+        return { key: `${id}:${ki}#${round}`, text: r.text, wide: true, answer: { display: r.a }, workspace: { type: "none" }, ...(pic ? { pic } : {}), meta: { lv: it.lv } };
       },
-      size: items.length
+      size: items.length,
+      items
     };
   }
 
@@ -431,7 +496,7 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
           key: `${id}:${r.key ?? noRuby(text)}#${round}`,
           text,
           figure: r.fig,
-          answer: { display: qs.map((q, i) => `(${i + 1}) ${String(q[1]).replace(/　/g, " ")}`).join("　") },
+          answer: { display: qs.map((q, i) => `(${i + 1}) ${exAns(q[0], q[1], 8).replace(/　/g, " ")}`).join("　") },
           workspace: { type: "lines", labels },
           side: r.side !== false,
           meta: {}
@@ -514,15 +579,26 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
   // ===== 学年のデータ =====
   // units: [id, 単元名, 分野, [topic, …]]   topic: [小単元名, 部品, 種類("w"|"f"|"d"), {weight}]
   const KIND = { w: ["word", "test", "practice"], f: ["figure", "test", "practice"], d: ["drill", "test", "practice"] };
+  // テストの組み立て:100点になるように [問題数, 1問の点]。has は "w"・"f"・"d" の集まり
+  function planOf(has) {
+    const d = has.has("d"), w = has.has("w"), f = has.has("f");
+    return d && w && f ? { drill: [6, 5], word: [6, 5], figure: [2, 20] } : d && w ? { drill: [10, 5], word: [5, 10] } : d && f ? { drill: [10, 5], figure: [2, 25] } : w && f ? { word: [8, 5], figure: [3, 20] } : d ? { drill: [10, 10] } : w ? { word: [10, 10] } : { figure: [4, 25] };
+  }
+  // あとから単元に小単元をくわえる(図の問題など)。テストの組み立ても作りなおす
+  function addTopic(unit, label, generator, k) {
+    const kindOf = (t) => (t.kinds[0] === "word" ? "w" : t.kinds[0] === "figure" ? "f" : "d");
+    const before = new Set(unit.topics.map(kindOf));
+    unit.topics.push({ label: noRuby(label), ...(noRuby(label) !== label ? { rubyLabel: label } : {}), generator, kinds: KIND[k] });
+    if (k !== "f" || before.has("f")) return;
+    // はじめての図の問題:テストでは図を1問(30点)にする(同じ形の図が何回も出ないように)
+    unit.testPlan = before.has("d") ? { drill: [6, 5], word: [8, 5], figure: [1, 30] } : { word: [10, 7], figure: [1, 30] };
+  }
   function grade(g, note, units) {
     return {
       grade: g,
       note,
       units: units.map(([id, name, domain, topics], i) => {
-        const has = new Set(topics.map((t) => t[2]));
-        // 100点になるように [問題数, 1問の点]
-        const d = has.has("d"), w = has.has("w"), f = has.has("f");
-        const plan = d && w && f ? { drill: [6, 5], word: [6, 5], figure: [2, 20] } : d && w ? { drill: [10, 5], word: [5, 10] } : d && f ? { drill: [10, 5], figure: [2, 25] } : w && f ? { word: [8, 5], figure: [3, 20] } : d ? { drill: [10, 10] } : w ? { word: [10, 10] } : { figure: [4, 25] };
+        const plan = planOf(new Set(topics.map((t) => t[2])));
         return {
           id, order: i + 1, name: noRuby(name), rubyName: name, domain: noRuby(domain),
           topics: topics.map(([label, generator, k, o = {}]) => ({ label: noRuby(label), ...(noRuby(label) !== label ? { rubyLabel: label } : {}), generator, kinds: KIND[k], ...o })),
@@ -582,5 +658,5 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
       { from: "word", only: L === 0 ? "word" : "why", n: 1, inst: kids ? "つぎの もんだいに こたえましょう。" : "{次|つぎ}の{問|と}いに{答|こた}えましょう。" }
     ];
   }
-  return { practicePlan, PIC_SRC, picSrc, img, picHtml, labeled, picRow, LET, LV, noRuby, parse, bank, figs, calc, grade, T, fig, line, arrow, arrowHead, rect, circle, path, poly, emo, tag, mark, C, graph, table, svgEsc, rnd };
+  return { addTopic, planOf, practicePlan, PIC_SRC, picSrc, img, picHtml, labeled, picRow, LET, LV, noRuby, parse, bank, figs, calc, grade, T, fig, line, arrow, arrowHead, rect, circle, path, poly, emo, tag, mark, C, graph, table, svgEsc, rnd };
 })();

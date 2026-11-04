@@ -175,6 +175,8 @@ body[data-view="print"] .home { display: none; }
 .hg { font: inherit; font-size: 26px; font-weight: bold; line-height: 1.2; padding: 8px 0; border-radius: 12px; border: 2px solid var(--gc); background: #fff; color: var(--gc); cursor: pointer; }
 .hg small { font-size: 14px; margin-left: 1px; }
 .hg.on { background: var(--gc); color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.18); }
+.home-pub { font: inherit; font-size: 15px; padding: 7px 10px; border: 1.5px solid #2b3a55; border-radius: 10px; background: #fff; color: #2b3a55; min-width: 12em; }
+.home-pub-note { font-size: 12px; color: #667; margin-top: 4px; }
 .home-levels { display: inline-flex; border: 1.5px solid #2b3a55; border-radius: 10px; overflow: hidden; background: #fff; }
 .hl { font: inherit; font-size: 17px; letter-spacing: 2px; padding: 9px 18px; color: #c9a227 !important; border: 0; background: #fff; color: #2b3a55; cursor: pointer; }
 .hl + .hl { border-left: 1.5px solid #2b3a55; }
@@ -569,12 +571,13 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     <div class="home-main">
   <div class="home-hero">
     <h1>理科プリント<span class="version" id="versionHome"></span></h1>
-    <p>小学校1・2年(生活科) ・ 小学校3〜6年の理科 ・ 中学1〜3年の理科。単元は教科書でよくある順にならべています。学年をえらんで、単元のボタンをおすとプリントができます。</p>
+    <p>小学校1・2年(生活科) ・ 小学校3〜6年の理科 ・ 中学1〜3年の理科。単元は教科書でよくある順にならべています(「教科書の順」で、教科書会社の順にもできます)。学年をえらんで、単元のボタンをおすとプリントができます。</p>
   </div>
   <button type="button" class="tk-banner" id="tkBanner"></button>
   <div class="home-row">
     <div><div class="home-step"><span class="n">1</span><span id="homeStep1">学年</span></div><div class="home-grades" id="homeGrades"></div></div>
     <div><div class="home-step"><span class="n">2</span>難易度</div><div class="home-levels" id="homeLevels"></div><div class="home-ages" id="homeAges"></div></div>
+    <div id="homePubWrap"><div class="home-step"><span class="n">3</span>教科書の順</div><select id="homePub" class="home-pub" aria-label="教科書の順"></select><div class="home-pub-note">単元を、教科書会社の順にならべかえます(おおよその順です)</div></div>
   </div>
     </div>
     <div class="home-mascot" aria-hidden="true"><div class="bubble" id="mascotSay">こんにちは！<br>学年と むずかしさを<br>えらんでね</div><div class="chara chara-guide" id="mascot"></div></div>
@@ -32953,6 +32956,10 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     // kids:1・2年(分かち書き)用のことば
     function render(it, rng, kids, p) {
       if (it.type === "qa") return { text: it.q, a: it.a };
+      if (it.type === "tf" && it.alt) {
+        const f = rnd(rng) < 0.5;
+        return render({ ...it, alt: null, q: f ? rng.pick(it.alt) : it.q, a: f ? "×" : "○" }, rng, kids, p);
+      }
       if (it.type === "tf") return { text: p && p.compact ? `（　　）${it.q}` : `（　　）${it.q}[[br]]${kids ? "〔ただしければ ○、まちがって いれば ×〕" : "〔{正|ただ}しければ○、まちがっていれば×〕"}`, a: it.a };
       if (it.type === "tfList") {
         const pick = rng.shuffle(it.list).slice(0, Math.min(it.list.length, 5));
@@ -33044,12 +33051,13 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     const SKIP_Q = /か、|なぜ|どうして|{理由|りゆう}|どのように|どうします|どうすれば|どうしたら|{書|か}きましょう|{答|こた}えましょう|ちがい|1つ/;
     const CHANGE = [["{大|おお}きくなる", "{小|ちい}さくなる"], ["ふえる", "へる"], ["{高|たか}くなる", "{低|ひく}くなる"], ["{長|なが}くなる", "{短|みじか}くなる"], ["{速|はや}くなる", "おそくなる"], ["{強|つよ}くなる", "{弱|よわ}くなる"], ["{上|あ}がる", "{下|さ}がる"], ["{明|あか}るくなる", "{暗|くら}くなる"], ["あたたかくなる", "つめたくなる"], ["{重|おも}くなる", "{軽|かる}くなる"], ["{多|おお}くなる", "{少|すく}なくなる"], ["{大|おお}きい", "{小|ちい}さい"], ["{高|たか}い", "{低|ひく}い"], ["{長|なが}い", "{短|みじか}い"], ["{速|はや}い", "おそい"], ["{多|おお}い", "{少|すく}ない"], ["{強|つよ}い", "{弱|よわ}い"], ["{明|あか}るい", "{暗|くら}い"]];
     const looksName = (a) => !/(る|い|た|ない|ます|です|だ|れる|する)$/.test(shortAns(a));
-    function changeOpts(okS) {
+    function changeOpts(okS, q = "") {
       for (const pair of CHANGE) {
         const k = pair.indexOf(okS);
         if (k >= 0) return [pair[1 - k], okS === "かわらない" || okS === "{変|か}わらない" ? pair[0] : "かわらない"];
       }
-      if (/^(かわらない|{変|か}わらない|{同|おな}じ)$/.test(okS)) return ["{大|おお}きくなる", "{小|ちい}さくなる"];
+      // 「かわらない」のときは、問いに合う変わり方を まちがいにする(重さ → 重くなる・軽くなる など)
+      if (/^(かわらない|{変|か}わらない|{同|おな}じ)$/.test(okS)) return /{重|おも}さ/.test(q) ? ["{重|おも}くなる", "{軽|かる}くなる"] : /{時間|じかん}|{長|なが}さ/.test(q) ? ["{長|なが}くなる", "{短|みじか}くなる"] : /{温度|おんど}|{気温|きおん}/.test(q) ? ["{高|たか}くなる", "{低|ひく}くなる"] : /{量|りょう}|{数|かず}/.test(q) ? ["ふえる", "へる"] : /{明|あか}るさ/.test(q) ? ["{明|あか}るくなる", "{暗|くら}くなる"] : ["{大|おお}きくなる", "{小|ちい}さくなる"];
       return null;
     }
     function numOpts(rng, okS) {
@@ -33060,7 +33068,9 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
       const cand = [...new Set([n * 2, n / 2, n + (dec ? 0.1 : 1) * (n >= 10 ? 10 : 1), n - (dec ? 0.1 : 1) * (n >= 10 ? 10 : 1), n * 3, n + (dec ? 0.2 : 2)].map((v) => +v.toFixed(dec)).filter((v) => v > 0 && v !== n && (dec || Number.isInteger(v))))];
       return rng.shuffle(cand).slice(0, 3).map(fmt);
     }
-    // ことばのなかま(同じなかまのことばを、まちがいの選択肢にする)
+    // ことばのなかま(同じなかまのことばを、まちがいの選択肢にする)。FAMR:ふりがなつきの形
+    const FAMR = new Map();
+    const famRuby = (w) => FAMR.get(w) || w;
     const FAM = `
   {東|ひがし},{西|にし},{南|みなみ},{北|きた}
   {春|はる},{夏|なつ},{秋|あき},{冬|ふゆ}
@@ -33173,11 +33183,11 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
   {回路|かいろ},{金|きん}ぞく
   {検|けん}{流|りゅう}{計|けい},{電流|でんりゅう}{計|けい},{電圧|でんあつ}{計|けい}
   {百葉箱|ひゃくようばこ},{温度|おんど}{計|けい},{方位|ほうい}じしん,{虫|むし}めがね,{台|だい}ばかり
-  でんぷん,ヨウ{素|そ}{液|えき},{石灰|せっかい}{水|すい}
+  ヨウ{素|そ}{液|えき},{石灰|せっかい}{水|すい},{食塩|しょくえん}{水|すい}
   {地層|ちそう},{化石|かせき},{火山灰|かざんばい},{断層|だんそう}
   れき,すな,どろ
-  {食物|しょくもつ}{連|れん}さ,{呼吸|こきゅう},{消化|しょうか}
   {消化|しょうか},{吸収|きゅうしゅう},{呼吸|こきゅう}
+  {食物|しょくもつ}{連|れん}さ,{呼吸|こきゅう},{消化|しょうか}
   はく{動|どう},{脈|みゃく}はく
   {蒸散|じょうさん},{気孔|きこう},{呼吸|こきゅう}
   てこ,{支点|してん},ふりこ
@@ -33205,7 +33215,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
   {電灯|でんとう},{電熱|でんねつ}{線|せん},せん{風|ふう}{機|き},スピーカー
   {地球|ちきゅう}{温暖|おんだん}{化|か},リサイクル
   {晴|は}れ,くもり,{雨|あめ}
-  `.trim().split("\n").map((l) => l.split(",").map((w) => noRuby(w).trim()));
+  `.trim().split("\n").map((l) => l.split(",").map((w) => (FAMR.has(noRuby(w).trim()) || FAMR.set(noRuby(w).trim(), w.trim()), noRuby(w).trim())));
     // 選択肢をつけられる問題か(★1 では、なるべく選んで答える問題を出す)
     function optionable(it, cands) {
       if (it.type !== "qa") return true;
@@ -33219,13 +33229,26 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
       if (!okS || /、/.test(okS) || [...okS].length > 18 || /（[　 ]{2,}）/.test(it.q) || SKIP_Q.test(q)) return r;
       let ng = null;
       if (/\d/.test(okS) && isNum(okS) && [...okS].length <= 10) ng = numOpts(rng, okS);
-      else if (changeOpts(okS)) ng = changeOpts(okS);
+      else ng = wrongOf(it, rng, cands, p.opts);
+      if (!ng) return r;
+      ng = rng.shuffle(ng).slice(0, p.opts - 1);
+      // 2つでひと組のことば(P波・S波、直列・並列など)は、2択でもよい
+      if (ng.length < 1 || (ng.length < 2 && !FAM.some((f) => f.includes(okS)))) return r;
+      const okText = ok.replace(/\(.*?\)|（.*?）/g, "").trim();
+      const opts = rng.shuffle([okText, ...ng]);
+      return { text: `${it.q}[[br]]${optLine(opts, kids)}`, a: LET[opts.indexOf(okText)], wide: true };
+    }
+    // まちがいのことば(なかまのことば・反対の変わり方・同じ小単元の答え)
+    function wrongOf(it, rng, cands, nOpts = 3) {
+      const ok = String(it.a), okS = shortAns(ok), q = noRuby(it.q);
+      let ng = null;
+      if (changeOpts(okS, q)) ng = changeOpts(okS, q);
       else {
         const fams = FAM.filter((f) => f.includes(okS));
         if (fams.length) {
           // いちばん合うなかま(まちがいが3つ以上とれるもの)を使う。同じ意味のことば(ちっ素・窒素など)がまざらないように、なかまはまぜない
-          const pick = fams.find((f) => f.filter((w) => w !== okS && !q.includes(w)).length >= Math.max(2, (p.opts || 3) - 1)) || fams[0];
-          ng = pick.filter((w) => w !== okS && !q.includes(w));
+          const pick = fams.find((f) => f.filter((w) => w !== okS && !q.includes(w)).length >= Math.max(2, (nOpts || 3) - 1)) || fams[0];
+          ng = pick.filter((w) => w !== okS && !q.includes(w)).map(famRuby);
         } else if (/^c\dr\./.test(it.id || "") && NAME_Q.test(q) && looksName(ok) && [...okS].length <= 10 && !/ところ|とき|から|ため|こと|よう/.test(okS)) {
           // 中学:同じ小単元のことばの答えを、まちがいの選択肢にする
           const L = [...okS].length, ascii = /^[\x20-\x7e₀-₉⁺⁻²³→＋]+$/.test(okS);
@@ -33236,18 +33259,53 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
           ng = rng.shuffle(pool).sort((a, b) => Math.abs([...shortAns(a)].length - L) - Math.abs([...shortAns(b)].length - L)).slice(0, 4).map((c) => c.replace(/\(.*?\)|（.*?）/g, "").trim());
         }
       }
-      if (!ng) return r;
-      ng = rng.shuffle(ng).slice(0, p.opts - 1);
-      // 2つでひと組のことば(P波・S波、直列・並列など)は、2択でもよい
-      if (ng.length < 1 || (ng.length < 2 && !FAM.some((f) => f.includes(okS)))) return r;
-      const okText = ok.replace(/\(.*?\)|（.*?）/g, "").trim();
-      const opts = rng.shuffle([okText, ...ng]);
-      return { text: `${it.q}[[br]]${optLine(opts, kids)}`, a: LET[opts.indexOf(okText)], wide: true };
+      return ng && ng.length ? ng : null;
+    }
+    // ===== 名前をきく問題から ○× の問題を作る =====
+    // 「〜を何といいますか。|A」→「〜を「A」といいます。」(正しい)/「〜を「B」といいます。」(まちがい。B はなかまのことば)
+    const ENDS = [
+      [/(\{何\|なん\}|なん)と(\s?)いいますか。$/, (A, m) => `「${A}」と${m[2]}いいます。`],
+      [/(は|とは)(\s?)(\{何\|なに\}|\{何\|なん\}|なに|なん)ですか。$/, (A, m) => `${m[1]}${m[2]}「${A}」です。`],
+      [/(は|が)(、?\s?)どう\s?なりますか。$/, (A, m) => { const v = politeOf(A); return v ? `${m[1]}${m[2]}${v}。` : null; }]
+    ];
+    function politeOf(v) {
+      if (/なる$/.test(v)) return v.replace(/なる$/, "なります");
+      if (/わらない$/.test(v)) return v.replace(/わらない$/, "わりません");
+      if (/(ふえ|へ)る$/.test(v)) return v.replace(/(ふえ|へ)る$/, (x) => x === "ふえる" ? "ふえます" : "へります");
+      if (/ない$/.test(v)) return null;
+      if (/がる$/.test(v)) return v.replace(/がる$/, "がります");
+      return null;
+    }
+    function deriveTf(items, cands) {
+      const out = [];
+      const fake = { next: () => 0.5, int: (a) => a, pick: (x) => x[0], shuffle: (x) => x.slice() };
+      items.forEach((it, i) => {
+        if (it.type !== "qa") return;
+        const q = noRuby(it.q), okS = shortAns(it.a);
+        if (!okS || /、|，/.test(okS) || [...okS].length > 14 || isNum(okS) || /（[　 ]{2,}）/.test(it.q) || SKIP_Q.test(q) || /どれ|どちら|{次|つぎ}の|{下|した}の|{図|ず}/.test(q)) return;
+        const end = ENDS.find(([re]) => re.test(it.q));
+        if (!end) return;
+        const ng = wrongOf(it, fake, cands, 3);
+        if (!ng) return;
+        const A = String(it.a).replace(/\(.*?\)|（.*?）/g, "").trim();
+        const m = end[0].exec(it.q), head = it.q.slice(0, m.index);
+        // 「あたたかさは あたたかくなります」のような文はつくらない
+        if (noRuby(head).includes(shortAns(A).slice(0, 3))) return;
+        const tq = end[1](A, m);
+        const fq = ng.map((B) => end[1](B, m)).filter(Boolean);
+        if (!tq || !fq.length) return;
+        out.push({ lv: it.lv, type: "tf", q: head + tq, alt: fq.map((x) => head + x), a: "○", derived: true, src: i, id: it.id });
+      });
+      return out;
     }
 
     // ===== ことば・しくみの問題 =====
     // 練習プリント用:問題の形のなかま
     const WHY = /なぜ|{理由|りゆう}|どうして|どのように|どうすれば|どうしたら|ちがい/;
+    // 文で書いて答える問題(答えは「(例)」にする。式や記号を書く問題はのぞく)
+    const FREE_Q = /なぜ|{理由|りゆう}|どうして|どのように|どうすれば|どうしたら|ちがい|1つ|2つ|3つ|{書|か}きましょう|わかること|わかりますか|くふう|{説明|せつめい}|{考|かんが}えられ|{利点|りてん}|よいですか/;
+    const isFree = (q, a, min = 6) => FREE_Q.test(noRuby(q)) && !/{式|しき}|{記号|きごう}|{化学|かがく}{反応|はんのう}|{単位|たんい}|{何|なん}と\s?いい|{何|なん}という|なんと\s?いい|{何|なん}ですか/.test(noRuby(q)) && [...noRuby(a)].length >= min && !/^[ア-エ]$/.test(noRuby(a));
+    const exAns = (q, a, min) => isFree(q, a, min) && !/^\({例|れい}\)/.test(String(a)) ? `({例|れい}) ${a}` : String(a);
     function catOf(it) {
       if (it.type === "tf") return "tf";
       if (it.type === "tfList") return "tfl";
@@ -33260,6 +33318,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
       const items = parse(src);
       for (const it of items) it.id = id;
       const cands = candidatesOf(items);
+      if (o.tf !== false) items.push(...deriveTf(items, cands));
       for (const it of items) it.optable = optionable(it, cands);
       for (const it of items) it.cat = catOf(it);
       return {
@@ -33278,6 +33337,11 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
             if (!pool.length) pool = items.filter((x) => x.cat === p.only);
             if (!pool.length) throw new Error(`${id}: ${p.only} の{問題|もんだい}がない`);
           }
+          if (!p.only) {
+            // ふつうのプリント:○×(作ったものもふくむ)は 5問に1問くらい
+            const tfs = pool.filter((x) => x.type === "tf"), rest = pool.filter((x) => x.type !== "tf");
+            pool = rest.length >= 4 && (!tfs.length || rnd(rng) >= 0.2) ? rest : tfs.length ? tfs : pool;
+          }
           if (p.opts === 3 && !p.only) {
             const op = pool.filter((x) => x.optable);
             if (op.length >= 4) pool = op;
@@ -33286,13 +33350,17 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
           const r = withOptions(render(it, rng, o.kids || /^s\d\./.test(id), p), it, rng, p, cands, o.kids || /^s\d\./.test(id));
           // 問題を全部使いきったら、同じ問題も出せるようにする(round)
           const round = ctx && Number.isInteger(ctx.index) ? Math.floor(ctx.index / pool.length) : 0;
+          const ki = it.derived ? it.src : items.indexOf(it);
+          // 書いて答える文の答えは「(例)」にする
+          if (it.type === "qa" && r.a === it.a) r.a = exAns(it.q, it.a, 6);
           const pic = o.pic === false || !picScope(id) || p.compact ? "" : picOf(it.q, o.pic || PIC_DEF[id]);
           if (p.compact) {
-            if (it.type === "tf") return { key: `${id}:${items.indexOf(it)}#${round}`, text: r.text, wide: false, cols: 2, answer: { display: r.a }, workspace: { type: "none" }, meta: { lv: it.lv } };
+            if (it.type === "tf") return { key: `${id}:${ki}#${round}`, text: r.text, wide: false, cols: 2, answer: { display: r.a }, workspace: { type: "none" }, meta: { lv: it.lv } };
           }
-          return { key: `${id}:${items.indexOf(it)}#${round}`, text: r.text, wide: true, answer: { display: r.a }, workspace: { type: "none" }, ...(pic ? { pic } : {}), meta: { lv: it.lv } };
+          return { key: `${id}:${ki}#${round}`, text: r.text, wide: true, answer: { display: r.a }, workspace: { type: "none" }, ...(pic ? { pic } : {}), meta: { lv: it.lv } };
         },
-        size: items.length
+        size: items.length,
+        items
       };
     }
 
@@ -33321,7 +33389,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
             key: `${id}:${r.key ?? noRuby(text)}#${round}`,
             text,
             figure: r.fig,
-            answer: { display: qs.map((q, i) => `(${i + 1}) ${String(q[1]).replace(/　/g, " ")}`).join("　") },
+            answer: { display: qs.map((q, i) => `(${i + 1}) ${exAns(q[0], q[1], 8).replace(/　/g, " ")}`).join("　") },
             workspace: { type: "lines", labels },
             side: r.side !== false,
             meta: {}
@@ -33404,15 +33472,26 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     // ===== 学年のデータ =====
     // units: [id, 単元名, 分野, [topic, …]]   topic: [小単元名, 部品, 種類("w"|"f"|"d"), {weight}]
     const KIND = { w: ["word", "test", "practice"], f: ["figure", "test", "practice"], d: ["drill", "test", "practice"] };
+    // テストの組み立て:100点になるように [問題数, 1問の点]。has は "w"・"f"・"d" の集まり
+    function planOf(has) {
+      const d = has.has("d"), w = has.has("w"), f = has.has("f");
+      return d && w && f ? { drill: [6, 5], word: [6, 5], figure: [2, 20] } : d && w ? { drill: [10, 5], word: [5, 10] } : d && f ? { drill: [10, 5], figure: [2, 25] } : w && f ? { word: [8, 5], figure: [3, 20] } : d ? { drill: [10, 10] } : w ? { word: [10, 10] } : { figure: [4, 25] };
+    }
+    // あとから単元に小単元をくわえる(図の問題など)。テストの組み立ても作りなおす
+    function addTopic(unit, label, generator, k) {
+      const kindOf = (t) => (t.kinds[0] === "word" ? "w" : t.kinds[0] === "figure" ? "f" : "d");
+      const before = new Set(unit.topics.map(kindOf));
+      unit.topics.push({ label: noRuby(label), ...(noRuby(label) !== label ? { rubyLabel: label } : {}), generator, kinds: KIND[k] });
+      if (k !== "f" || before.has("f")) return;
+      // はじめての図の問題:テストでは図を1問(30点)にする(同じ形の図が何回も出ないように)
+      unit.testPlan = before.has("d") ? { drill: [6, 5], word: [8, 5], figure: [1, 30] } : { word: [10, 7], figure: [1, 30] };
+    }
     function grade(g, note, units) {
       return {
         grade: g,
         note,
         units: units.map(([id, name, domain, topics], i) => {
-          const has = new Set(topics.map((t) => t[2]));
-          // 100点になるように [問題数, 1問の点]
-          const d = has.has("d"), w = has.has("w"), f = has.has("f");
-          const plan = d && w && f ? { drill: [6, 5], word: [6, 5], figure: [2, 20] } : d && w ? { drill: [10, 5], word: [5, 10] } : d && f ? { drill: [10, 5], figure: [2, 25] } : w && f ? { word: [8, 5], figure: [3, 20] } : d ? { drill: [10, 10] } : w ? { word: [10, 10] } : { figure: [4, 25] };
+          const plan = planOf(new Set(topics.map((t) => t[2])));
           return {
             id, order: i + 1, name: noRuby(name), rubyName: name, domain: noRuby(domain),
             topics: topics.map(([label, generator, k, o = {}]) => ({ label: noRuby(label), ...(noRuby(label) !== label ? { rubyLabel: label } : {}), generator, kinds: KIND[k], ...o })),
@@ -33472,7 +33551,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
         { from: "word", only: L === 0 ? "word" : "why", n: 1, inst: kids ? "つぎの もんだいに こたえましょう。" : "{次|つぎ}の{問|と}いに{答|こた}えましょう。" }
       ];
     }
-    return { practicePlan, PIC_SRC, picSrc, img, picHtml, labeled, picRow, LET, LV, noRuby, parse, bank, figs, calc, grade, T, fig, line, arrow, arrowHead, rect, circle, path, poly, emo, tag, mark, C, graph, table, svgEsc, rnd };
+    return { addTopic, planOf, practicePlan, PIC_SRC, picSrc, img, picHtml, labeled, picRow, LET, LV, noRuby, parse, bank, figs, calc, grade, T, fig, line, arrow, arrowHead, rect, circle, path, poly, emo, tag, mark, C, graph, table, svgEsc, rnd };
   })();
 
   // add/r0lib2
@@ -36755,6 +36834,1004 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     ["k3-14", "{科学|かがく}{技術|ぎじゅつ}と{人間|にんげん}", "エネルギー", [["エネルギー{資源|しげん}と{環境|かんきょう}", "c3r.energy", "w"]]]
   ]);
 
+  // add/rfig
+  // このファイルは tools/rika/annotate.js が content/rfig.js から作ったもの。直すときは content/rfig.js を直して作りなおす。
+  // 図の問題がなかった単元の 図・絵・表の問題 と、実験の考え方(条件をそろえる・結果からわかること)の問題
+  // それぞれの単元のおわり(まとめ の前)に小単元としてくわえる
+  var rfig = (() => {
+    const { figs, T, fig, line, arrow, arrowHead, rect, circle, path, poly, C, LET, table, graph, picRow, addTopic } = RK;
+    const { beaker, tube, lamp } = RD;
+    const M = (x, y, s) => T(x, y + 1.3, s, 3.8, { bold: true });
+    const kidsText = "えを みて、つぎの もんだいに こたえましょう。";
+    const pickN = (rng, arr, n) => rng.shuffle(arr.slice()).slice(0, n);
+    const out = [];
+    const add = (gen) => (out.push(gen), gen);
+
+    // ===================== 1年・2年 生活 =====================
+    // 学校のへや(絵)
+    add(figs("s1.roomFig", [
+      { lv: 1, make: (rng) => {
+        const all = [["hon", "ほんを かりたり よんだり する へや"], ["kyuukyuu", "けがを したときに いく へや"], ["kyuushoku", "きゅうしょくを つくる へや"], ["sensei", "せんせいたちが しごとを する へや"]];
+        const items = rng.shuffle(all.slice());
+        const ask = pickN(rng, [0, 1, 2, 3], 2);
+        return { fig: picRow(items.map((x) => x[0]), 26), text: kidsText, qs: ask.map((i) => [`「${items[i][1]}」の えは どれですか。`, LET[i]]), key: items.map((x) => x[0]).join() + ask.join(), side: false };
+      } }
+    ]));
+    // まちのしせつ(絵)
+    add(figs("s2.townFig", [
+      { lv: 1, make: (rng) => {
+        const all = [["post", "てがみや にもつを おくる ところ"], ["kouban", "みちが わからない ときに きく ところ"], ["shoubousha", "かじの ときに くる くるま"], ["kouen", "あそんだり やすんだり する ところ"], ["hon", "ほんを かりる ところ(としょかん)"]];
+        const items = pickN(rng, all, 4);
+        const ask = pickN(rng, [0, 1, 2, 3], 2);
+        return { fig: picRow(items.map((x) => x[0]), 26), text: kidsText, qs: ask.map((i) => [`「${items[i][1]}」の えは どれですか。`, LET[i]]), key: items.map((x) => x[0]).join() + ask.join(), side: false };
+      } }
+    ]));
+    // いきもののすみか(絵)
+    add(figs("s2.homeFig", [
+      { lv: 1, make: (rng) => {
+        const water = rng.pick(["medaka", "zarigani"]);
+        const items = rng.shuffle([water, "dangomushi", "kabuto", "katatsumuri"]);
+        const qs = [["みずの なかで かう いきものは どれですか。", LET[items.indexOf(water)]], ["いしや おちばの したに いる ことが おおい いきものは どれですか。", LET[items.indexOf("dangomushi")]], ["からを せおって いる いきものは どれですか。", LET[items.indexOf("katatsumuri")]]];
+        return { fig: picRow(items, 26), text: kidsText, qs: pickN(rng, qs, 2), key: items.join() + water, side: false };
+      } }
+    ]));
+
+    // ===================== 3年 =====================
+    add(figs("r3.lookFig", [
+      { lv: 1, make: (rng) => {
+        const items = rng.shuffle(["mushimegane", "ondokei", "houijishin", "stopwatch"]);
+        return { fig: picRow(items, 24), text: "かんさつや{実験|じっけん}で{使|つか}う{道具|どうぐ}の{絵|え}です。", qs: [["{小|ちい}さいものを{大|おお}きくして{見|み}る{道具|どうぐ}はどれですか。", LET[items.indexOf("mushimegane")]], ["{方位|ほうい}を{調|しら}べる{道具|どうぐ}はどれですか。", LET[items.indexOf("houijishin")]], ["{虫|むし}めがねで、ぜったいに{見|み}てはいけないものは{何|なん}ですか。", "{太陽|たいよう}"]], key: items.join(), side: false };
+      } },
+      { lv: 1, make: (rng) => {
+        const items = rng.shuffle(["dangomushi", "tentou", "ari", "katatsumuri"]);
+        return { fig: picRow(items, 24), text: "{校庭|こうてい}で{見|み}つけた{生|い}き{物|もの}の{絵|え}です。", qs: [["{石|いし}や{落|お}ち{葉|ば}の{下|した}で{見|み}つかることが{多|おお}い{生|い}き{物|もの}はどれですか。", LET[items.indexOf("dangomushi")]], ["からをもっている{生|い}き{物|もの}はどれですか。", LET[items.indexOf("katatsumuri")]], ["かんさつカードに{書|か}くとよいことを1つ{答|こた}えましょう。", "{色|いろ}・{形|かたち}・{大|おお}きさ({見|み}つけた{場所|ばしょ}・{日|ひ}づけ など)"]], key: items.join(), side: false };
+      } }
+    ]));
+    add(figs("r3.soundFig", [
+      { lv: 1, make: (rng) => {
+        const big = rng.chance(0.5);
+        return { fig: table(["たたき{方|かた}", "{音|おと}の{大|おお}きさ", "{上|うえ}にのせたビーズのようす"], [["{弱|よわ}くたたく", "{小|ちい}さい", big ? "{少|すこ}しはねる" : "ア"], ["{強|つよ}くたたく", "{大|おお}きい", big ? "ア" : "{大|おお}きくはねる"]]), text: "たいこの{上|うえ}にビーズをのせて、たたく{強|つよ}さをかえ、{音|おと}の{大|おお}きさとビーズのようすを{調|しら}べました。", qs: [["アにあてはまるようすを{書|か}きましょう。", big ? "{大|おお}きくはねる" : "{少|すこ}しはねる"], ["{音|おと}が{出|で}ているとき、たいこはどうなっていますか。", "ふるえている"], ["この{実験|じっけん}から、{音|おと}の{大|おお}きさともののふるえについてわかることを{書|か}きましょう。", "{大|おお}きい{音|おと}ほど、もののふるえが{大|おお}きい"]], key: big ? "b" : "s", side: false };
+      } },
+      { lv: 2, make: (rng) => {
+        const how = rng.pick([["{糸|いと}をぴんとはる", "よく{聞|き}こえる"], ["{糸|いと}をたるませる", "{聞|き}こえにくくなる"], ["{糸|いと}のとちゅうを{指|ゆび}でつまむ", "{聞|き}こえにくくなる({聞|き}こえなくなる)"]]);
+        return { fig: picRow(["itodenwa"], 40, { letters: false }), text: `{糸|いと}{電話|でんわ}で{話|はなし}をしました。${how[0]}と、どうなるか{調|しら}べました。`, qs: [["{話|はな}している{人|ひと}の{声|こえ}は、{何|なに}をつたわって{相手|あいて}にとどきますか。", "{糸|いと}"], [`${how[0]}と、{声|こえ}の{聞|き}こえ{方|かた}はどうなりますか。`, how[1]], ["{声|こえ}が{聞|き}こえているとき、{糸|いと}はどうなっていますか。", "ふるえている"]], key: how[0], side: true };
+      } }
+    ]));
+
+    // ===================== 4年 =====================
+    add(figs("r4.seasonFig", [
+      { lv: 1, make: (rng) => {
+        const S = [["sakura", "{春|はる}"], ["himawari", "{夏|なつ}"], ["momiji", "{秋|あき}"], ["yukidaruma", "{冬|ふゆ}"]];
+        const items = rng.shuffle(S.slice());
+        const ask = rng.pick(items);
+        return { fig: picRow(items.map((x) => x[0]), 24), text: "{季節|きせつ}のようすの{絵|え}です。", qs: [[`${ask[1]}のようすの{絵|え}はどれですか。`, LET[items.indexOf(ask)]], ["ア〜エを、{春|はる}・{夏|なつ}・{秋|あき}・{冬|ふゆ}のじゅんにならべましょう。", S.map((x) => LET[items.indexOf(x)]).join("→")], ["ツバメが{南|みなみ}の{国|くに}へうつっていくのは、どの{季節|きせつ}ですか。", "{秋|あき}"]], key: items.map((x) => x[0]).join() + ask[1], side: false };
+      } },
+      { lv: 2, make: (rng) => {
+        const d = rng.int(-1, 1);
+        const base = [15, 19, 22, 26, 27, 24, 18, 13, 8, 6, 6, 9].map((v) => v + d);
+        const mon = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
+        const g = graph({ xs: [0, 11, 1], ys: [0, 30, 5], xl: "({月|つき})", yl: "(℃)", lines: [{ pts: base.map((v, i) => [i, v]) }], w: 80, h: 40, x0: 12, y0: 7, xLab: (v) => mon[v] });
+        const hi = base.indexOf(Math.max(...base));
+        return { fig: fig(100, 60, g.raw, g.lab, 1.15), text: "1{年|ねん}{間|あいだ}の{気温|きおん}の{変化|へんか}をグラフにしました。", qs: [["{気温|きおん}がいちばん{高|たか}いのは{何|なん}{月|つき}ですか。", `${mon[hi]}{月|つき}`], ["{気温|きおん}が{高|たか}い{季節|きせつ}には、{生|い}き{物|もの}の{活動|かつどう}はどうなりますか。", "さかんになる"], ["{気温|きおん}が{低|ひく}い{冬|ふゆ}、こん{虫|ちゅう}などの{生|い}き{物|もの}はどのようにすごしていますか。", "たまごやさなぎ、{成虫|せいちゅう}などのすがたで、じっとしてすごす"]], key: `t${d}`, side: false };
+      } }
+    ]));
+    add(figs("r4.soakFig", [
+      { lv: 1, make: (rng) => {
+        const a = rng.int(5, 12), b = a + rng.int(10, 25), c = b + rng.int(40, 80);
+        const rows = rng.shuffle([["じゃり", `${a}{秒|びょう}`], ["すな", `${b}{秒|びょう}`], ["{校庭|こうてい}の{土|ど}", `${c}{秒|びょう}`]]);
+        return { fig: table(["{土|ど}のしゅるい", ...rows.map((r) => r[0])], [["{水|みず}がしみこむまでの{時間|じかん}", ...rows.map((r) => r[1])]]), text: "{同|おな}じ{量|りょう}の{土|ど}を{入|い}れたいれものに、{同|おな}じ{量|りょう}の{水|みず}を{注|そそ}いで、{水|みず}がしみこむまでの{時間|じかん}を{調|しら}べました。つぶの{大|おお}きさは、じゃり → すな → {校庭|こうてい}の{土|ど} のじゅんに{小|ちい}さくなります。", qs: [["{水|みず}がいちばんはやくしみこんだのはどれですか。", "じゃり"], ["この{実験|じっけん}からわかることを{書|か}きましょう。", "つぶが{大|おお}きいほど、{水|みず}がしみこみやすい"], rng.pick([["{雨|あめ}のあと、{水|みず}たまりができやすいのは、じゃり・すな・{校庭|こうてい}の{土|ど}のどれですか。", "{校庭|こうてい}の{土|ど}"], ["この{実験|じっけん}で、{土|ど}の{量|りょう}や{水|みず}の{量|りょう}を{同|おな}じにしたのはなぜですか。", "{土|ど}のしゅるい(つぶの{大|おお}きさ)のちがいだけをくらべるため"]])], key: `${a}${b}${c}`, side: false };
+      } }
+    ]));
+    add(figs("r4.evapFig", [
+      { lv: 1, make: (rng) => {
+        const v = rng.pick([80, 85, 90]), lidLeft = rng.chance(0.5);
+        const cup = (x, lid, lvl) => beaker(x, 44, 18, 30, lvl, { f: C.water }) + (lid ? rect(x - 11, 11.5, 22, 2, { f: C.gray, w: 0.4 }) + [-5, 0, 5].map((dx) => `<circle cx="${x + dx}" cy="15" r="0.8" fill="${C.water}" stroke="#000" stroke-width="0.25"/>`).join("") : "") + line(x - 9, 44 - 30 * 0.7, x - 6, 44 - 30 * 0.7, { w: 0.4 });
+        const s = cup(18, lidLeft, lidLeft ? 0.7 : 0.7 * v / 100) + cup(52, !lidLeft, lidLeft ? 0.7 * v / 100 : 0.7);
+        const noLid = lidLeft ? "イ" : "ア", lid = lidLeft ? "ア" : "イ";
+        return { fig: fig(70, 54, s, [M(18, 50, "ア"), M(52, 50, "イ")]), text: `{同|おな}じ{量|りょう}の{水|みず}を{入|い}れた{入|い}れ{物|もの}ア・イを、{日|ひ}なたに3{日間|にちかん}おきました。${lid}にはふたをしました。{線|せん}は、はじめの{水面|すいめん}の{高|たか}さです。`, qs: [["{水|みず}の{量|りょう}がへったのは、ア・イのどちらですか。", noLid], ["へった{水|みず}は、どこへいきましたか。", "{水|みず}じょう{気|き}になって、{空気|くうき}{中|ちゅう}へ{出|で}ていった"], [`${lid}のふたの{内|うち}がわに{水|すい}てきがついたのはなぜですか。`, "じょう{発|はっ}した{水|みず}じょう{気|き}が、ふたで{冷|ひ}やされて{水|みず}になったから"]], key: `${v}${lidLeft}`, side: true };
+      } }
+    ]));
+    add(figs("r4.syringeFig", [
+      { lv: 1, make: (rng) => {
+        const airLeft = rng.chance(0.5);
+        const syr = (x, air) => rect(x - 5, 14, 10, 24, { f: air ? "#fff" : C.water, w: 0.5 }) + rect(x - 4.4, 8, 8.8, 6, { f: C.gray, w: 0.4 }) + line(x, 2, x, 8, { w: 1.2 }) + rect(x - 6, 1, 12, 1.6, { f: C.gray, w: 0.4 }) + line(x, 38, x, 41, { w: 1 }) + rect(x - 3, 41, 6, 1.5, { f: "#000", w: 0 }) + arrow(x + 9, 1, x + 9, 9, { w: 0.5 });
+        const s = syr(16, airLeft) + syr(50, !airLeft);
+        const air = airLeft ? "ア" : "イ", wat = airLeft ? "イ" : "ア";
+        return { fig: fig(66, 50, s, [M(16, 47, "ア"), M(50, 47, "イ"), T(27, 6, "おす", 2.8), T(61, 6, "おす", 2.8)], 1.0), text: `{注|ちゅう}しゃ{器|き}の{先|さき}をふさいで、${air}には{空気|くうき}を、${wat}には{水|みず}をとじこめ、ピストンをおしました。`, qs: [["ピストンが{下|さ}がったのは、ア・イのどちらですか。", air], [`${air}の{中|なか}の{空気|くうき}の{体積|たいせき}はどうなりましたか。`, "{小|ちい}さくなった"], [`${wat}の{中|なか}の{水|みず}の{体積|たいせき}はどうなりましたか。`, "かわらなかった"], [`${air}のピストンから{手|て}をはなすと、ピストンはどうなりますか。`, "{元|もと}の{位置|いち}にもどる"]], key: `${airLeft}`, side: true };
+      } }
+    ]));
+
+    // ===================== 5年 =====================
+    add(figs("r5.cloudFig", [
+      { lv: 1, make: (rng) => {
+        const city = [["{福岡|ふくおか}", 8], ["{広島|ひろしま}", 20], ["{大阪|おおさか}", 32], ["{名古屋|なごや}", 43], ["{東京|とうきょう}", 54]];
+        const st = rng.int(0, 2);
+        let s = "";
+        const lab = [];
+        for (let d = 0; d < 2; d++) {
+          const ox = d * 64;
+          s += rect(ox + 2, 4, 60, 26, { f: "#fff", w: 0.4 }) + `<ellipse cx="${ox + 2 + city[st + d][1]}" cy="14" rx="8" ry="5" fill="${C.gray}" stroke="#666" stroke-width="0.3"/>`;
+          city.forEach(([nm, x], k) => { s += `<circle cx="${ox + 2 + x}" cy="22" r="0.9" fill="#000"/>`; lab.push(T(ox + 2 + x, k % 2 ? 29 : 26.5, nm, 2.5)); });
+          lab.push(T(ox + 32, 35.5, ["1{日|にち}め", "2{日|にち}め"][d], 3), T(ox + 4, 8, "{西|にし}", 2.5, { anchor: "start" }), T(ox + 60, 8, "{東|ひがし}", 2.5, { anchor: "end" }));
+        }
+        return { fig: fig(128, 38, s, lab, 1.05), text: "{雲|くも}({灰色|はいいろ})の{動|うご}きを、2{日間|にちかん}つづけてかんさつしました。{雲|くも}の{下|した}では{雨|あめ}がふっています。", qs: [["{雲|くも}は、どの{方|ほう}{位|くらい}からどの{方|ほう}{位|くらい}へ{動|うご}いていますか。", "{西|にし}から{東|ひがし}"], ["3{日|にち}めに{雨|あめ}がふると{考|かんが}えられるのは、どの{都市|とし}ですか。", city[st + 2][0]], ["{日本|にほん}{付近|ふきん}で、{天気|てんき}が{西|にし}から{東|ひがし}へかわっていくことが{多|おお}いのはなぜですか。", "{雲|くも}が{西|にし}から{東|ひがし}へ{動|うご}いていくから"]], key: `c${st}`, side: false };
+      } }
+    ]));
+    add(figs("r5.typhoonFig", [
+      { lv: 1, make: (rng) => {
+        const land = path("M30 10 Q38 12 44 18 Q52 26 60 28 Q70 30 76 26 L80 30 Q72 36 62 36 Q50 36 42 30 Q34 24 26 22 Q20 20 18 24 L14 22 Q18 14 30 10 Z", { f: C.leaf, w: 0.4 });
+        const pts = [[30, 76], [26, 66], [27, 56], [32, 46], [40, 38], [52, 30]];
+        const d0 = rng.int(1, 20);
+        let s = land + `<polyline points="${pts.map((p) => p.join(",")).join(" ")}" fill="none" stroke="#000" stroke-width="0.5" stroke-dasharray="1.2 0.8"/>` + pts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.2" fill="#fff" stroke="#000" stroke-width="0.4"/>`).join("") + arrowHead(40, 38, 52, 30);
+        const lab = [T(27, 81, `${d0}{日|ひ}`, 2.6), T(36, 49, `${d0 + 2}{日|ひ}`, 2.6, { anchor: "start" }), T(62, 14, "{日本|にほん}", 3), T(14, 60, "{海|うみ}", 3)];
+        return { fig: fig(84, 86, s, lab, 0.72), text: `ある{台風|たいふう}の${d0}{日|にち}から1{日|にち}ごとの{中心|ちゅうしん}の{位置|いち}を、○で{表|あらわ}しました。`, qs: [["{台風|たいふう}は、どの{方|ほう}{位|くらい}の{海上|かいじょう}から{日本|にほん}に{近|ちか}づいてきましたか。", "{南|みなみ}"], ["{台風|たいふう}が{日本|にほん}に{近|ちか}づくと、{雨|あめ}や{風|かぜ}はどうなりますか。", "{強|つよ}くなる"], ["{台風|たいふう}が{多|おお}く{日本|にほん}に{近|ちか}づくのは、どの{季節|きせつ}ですか。", "{夏|なつ}から{秋|あき}"], ["{台風|たいふう}によるさい{害|がい}を1つ{答|こた}えましょう。", "{大雨|おおあめ}によるこう{水|みず}({強風|きょうふう}で{木|き}がたおれる・{高|たか}しお など)"]], key: `t${d0}`, side: true };
+      } }
+    ]));
+    add(figs("r5.wombFig", [
+      { lv: 1, make: (rng) => {
+        const s = `<ellipse cx="32" cy="34" rx="24" ry="28" fill="${C.red}" stroke="#000" stroke-width="0.6"/><ellipse cx="32" cy="35" rx="20" ry="24" fill="${C.water}" stroke="#000" stroke-width="0.3"/>` + path("M46 18 Q54 26 51 38 Q48 30 42 24 Z", { f: "#c98", w: 0.3 }) + path("M47 28 Q40 36 34 40", { w: 1 }) + `<circle cx="26" cy="28" r="6" fill="#fde" stroke="#000" stroke-width="0.4"/><ellipse cx="29" cy="42" rx="7" ry="9" fill="#fde" stroke="#000" stroke-width="0.4"/>`;
+        const L = rng.shuffle([["{子宮|しきゅう}", [32, 7]], ["たいばん", [51, 26]], ["へそのお", [41, 35]], ["{羊水|ようすい}", [20, 52]]]);
+        const lab = [];
+        let lines2 = "";
+        L.forEach(([, [x, y]], i) => {
+          const right = x > 32;
+          lines2 += line(x, y, right ? 63 : 6, y, { w: 0.3 }) + `<circle cx="${x}" cy="${y}" r="0.7" fill="#000"/>`;
+          lab.push(M(right ? 66 : 3, y, LET[i]));
+        });
+        const ask = rng.shuffle([0, 1, 2, 3]).slice(0, 2);
+        return { fig: fig(70, 66, s + lines2, lab), text: "{図|ず}は、{母親|ははおや}の{子宮|しきゅう}の{中|なか}で{育|そだ}つ{子|こ}どものようすです。", qs: [...ask.map((i) => [`${LET[i]}を{何|なん}といいますか。`, L[i][0]]), ["{子|こ}どもは、へそのおを{通|とお}して、{母親|ははおや}から{何|なに}をもらいますか。", "{養分|ようぶん}(と{酸素|さんそ})"], ["{人|ひと}の{子|こ}どもは、{受精|じゅせい}してから{約|やく}{何|なん}{週|しゅう}{間|あいだ}でうまれますか。", "{約|やく}38{週間|しゅうかん}"]], key: L.map((x) => x[0]).join() + ask.join(), side: true };
+      } }
+    ]));
+
+    // ===================== 6年 =====================
+    add(figs("r6.leafFig", [
+      { lv: 1, make: (rng) => {
+        const sunA = rng.chance(0.5);
+        const rows = [["ア", sunA ? "{日光|にっこう}に{当|あ}てた" : "アルミニウムはくでおおった", sunA ? "{青|あお}むらさき{色|しょく}になった" : "かわらなかった"], ["イ", sunA ? "アルミニウムはくでおおった" : "{日光|にっこう}に{当|あ}てた", sunA ? "かわらなかった" : "{青|あお}むらさき{色|しょく}になった"]];
+        const sun = sunA ? "ア" : "イ";
+        return { fig: table(["{葉|は}", "{朝|あさ}から{昼|ひる}すぎまで", "ヨウ{素|そ}{液|えき}につけたようす"], rows), text: "{前|まえ}の{日|ひ}の{夕方|ゆうがた}から、ジャガイモの{葉|は}ア・イをアルミニウムはくでおおっておきました。{次|つぎ}の{日|ひ}の{朝|あさ}、{片方|かたほう}のはくをはずして{日光|にっこう}に{当|あ}てました。", qs: [["でんぷんがあったのは、ア・イのどちらですか。", sun], ["この{実験|じっけん}からわかることを{書|か}きましょう。", "{葉|は}に{日光|にっこう}が{当|あ}たると、でんぷんができる"], ["{前|まえ}の{日|ひ}の{夕方|ゆうがた}から{葉|は}をアルミニウムはくでおおっておくのはなぜですか。", "はじめに{葉|は}にあるでんぷんをなくしておくため"]], key: `l${sunA}`, side: false };
+      } },
+      { lv: 2, make: (rng) => {
+        const leafA = rng.chance(0.5);
+        const rows = [["ア", leafA ? "{葉|は}をつけたまま" : "{葉|は}をとった", leafA ? "たくさんついた" : "{少|すこ}しついた"], ["イ", leafA ? "{葉|は}をとった" : "{葉|は}をつけたまま", leafA ? "{少|すこ}しついた" : "たくさんついた"]];
+        return { fig: table(["", "ホウセンカ", "15{分|ふん}{後|ご}のふくろの{内|うち}がわ({水|みず}てき)"], rows), text: "ホウセンカにポリエチレンのふくろをかぶせて、{水|みず}てきのつき{方|かた}を{調|しら}べました。", qs: [["{水|みず}てきが{多|おお}くついたのは、ア・イのどちらですか。", leafA ? "ア" : "イ"], ["この{実験|じっけん}からわかることを{書|か}きましょう。", "{根|ね}から{吸|す}い{上|あ}げた{水|みず}は、おもに{葉|は}から{出|で}ていく"], ["{葉|は}から{水|みず}が{水|みず}じょう{気|き}になって{出|で}ていくことを{何|なん}といいますか。", "{蒸散|じょうさん}"]], key: `t${leafA}`, side: false };
+      } }
+    ]));
+    add(figs("r6.chainFig", [
+      { lv: 1, make: (rng) => {
+        const chain = rng.pick([[["happa", "{植物|しょくぶつ}"], ["batta", "バッタ"], ["kaeru", "カエル"]], [["happa", "{植物|しょくぶつ}"], ["aomushi", "モンシロチョウのよう{虫|むし}"], ["tsubame", "{鳥|とり}"]]]);
+        const items = rng.shuffle(chain.slice());
+        return { fig: picRow(items.map((x) => x[0]), 26), text: `${rng.shuffle(chain.map((x) => x[1])).join("・")}の{絵|え}です。`, qs: [["「{食|た}べられるもの → {食|た}べるもの」のじゅんに、{記号|きごう}をならべましょう。", chain.map((x) => LET[items.indexOf(x)]).join("→")], ["{日光|にっこう}を{受|う}けて、{自分|じぶん}で{養分|ようぶん}をつくることができるのはどれですか。", LET[items.indexOf(chain[0])]], ["このような、{生|い}き{物|もの}どうしの「{食|た}べる・{食|た}べられる」のつながりを{何|なん}といいますか。", "{食物|しょくもつ}{連|れん}さ"]], key: items.map((x) => x[0]).join(), side: false };
+      } }
+    ]));
+    add(figs("r6.faultFig", [
+      { lv: 1, make: (rng) => {
+        const sh = rng.pick([5, 7, 9]);
+        const cols = [C.sand, C.gray, C.yellow, C.leaf];
+        let s = "";
+        const xb = (y) => +(44 - (y - 2) * 0.22).toFixed(2);
+        for (let i = 0; i < 4; i++) {
+          const y = 6 + i * 9;
+          s += poly([[4, y], [xb(y), y], [xb(y + 9), y + 9], [4, y + 9]], { f: cols[i], w: 0.3 });
+          s += poly([[xb(y + sh), y + sh], [70, y + sh], [70, y + sh + 9], [xb(y + sh + 9), y + sh + 9]], { f: cols[i], w: 0.3 });
+        }
+        s += line(xb(2), 2, xb(52), 52, { w: 0.9 });
+        return { fig: fig(74, 56, s, [M(49, 4, "ア")]), text: "{図|ず}は、あるがけで{見|み}られた{地層|ちそう}のようすです。アの{線|せん}のところで、{地層|ちそう}がずれています。", qs: [["アのような{地層|ちそう}のずれを{何|なん}といいますか。", "{断層|だんそう}"], ["アのずれは、{大地|だいち}にどのようなことが{起|お}こってできましたか。", "{大|おお}きな{力|ちから}がはたらいて、{大地|だいち}がずれた"], ["アのずれができるとき、いっしょに{起|お}こることが{多|おお}いのは{何|なん}ですか。", "{地|じ}しん"]], key: `f${sh}`, side: true };
+      } },
+      { lv: 2, make: () => {
+        let s = poly([[4, 50], [34, 10], [64, 50]], { f: C.sand, w: 0.5 }) + `<ellipse cx="34" cy="56" rx="16" ry="5" fill="${C.red}" stroke="#000" stroke-width="0.4"/>` + path("M34 51 L34 12", { w: 1.2, c: "#c44" }) + path("M30 10 Q34 0 40 4 Q46 -2 50 6", { w: 0.5, dash: "1 0.8" });
+        return { fig: fig(70, 64, s, [M(55, 4, "ア"), M(56, 58, "イ")]), text: "{図|ず}は、{火山|かざん}のつくりをかんたんに{表|あらわ}したものです。アはふん{火|ひ}でふき{出|だ}されたもの、イは{地下|ちか}にあるどろどろにとけたものです。", qs: [["イを{何|なん}といいますか。", "マグマ"], ["アのうち、{空|そら}からふりつもる{細|こま}かいつぶを{何|なん}といいますか。", "{火山灰|かざんばい}"], ["{火山灰|かざんばい}のつぶは、{川原|かわら}のすなのつぶとくらべて、どんな{形|かたち}をしていますか。", "{角|かく}ばっている"]], key: "v", side: true };
+      } }
+    ]));
+    add(figs("r6.elecFig", [
+      { lv: 1, make: (rng) => {
+        const a = rng.int(20, 40), b = a * rng.int(8, 15);
+        const rows = rng.shuffle([["{豆|まめ}{電球|でんきゅう}", `${a}{秒|びょう}`], ["{発光|はっこう}ダイオード", `${b}{秒|びょう}`]]);
+        return { fig: table(["つないだもの", "{明|あ}かりがついていた{時間|じかん}"], rows), text: "{手回|てまわ}し{発電|はつでん}{機|き}を{同|おな}じ{回数|かいすう}{回|まわ}して、コンデンサーに{電気|でんき}をためました。それぞれのコンデンサーを、{豆|まめ}{電球|でんきゅう}と{発光|はっこう}ダイオードにつないで、{明|あ}かりがついていた{時間|じかん}をはかりました。", qs: [["{明|あ}かりが{長|なが}くついたのはどちらですか。", "{発光|はっこう}ダイオード"], ["この{実験|じっけん}からわかることを{書|か}きましょう。", "{発光|はっこう}ダイオードは、{豆|まめ}{電球|でんきゅう}より{使|つか}う{電気|でんき}の{量|りょう}が{少|すく}ない"], ["この{実験|じっけん}で、{手回|てまわ}し{発電|はつでん}{機|き}を{回|まわ}す{回数|かいすう}を{同|おな}じにしたのはなぜですか。", "ためる{電気|でんき}の{量|りょう}を{同|おな}じにするため"]], key: `${a}${b}${rows[0][0]}`, side: false };
+      } },
+      { lv: 1, make: (rng) => {
+        const items = rng.shuffle(["mamedenkyuu", "motor", "hatsudenki", "denchi"]);
+        return { fig: picRow(items, 24), text: "{電気|でんき}にかかわる{道具|どうぐ}の{絵|え}です。", qs: [["{電気|でんき}を{光|ひかり}にかえるものはどれですか。", LET[items.indexOf("mamedenkyuu")]], ["{電気|でんき}を{回|まわ}る{動|うご}きにかえるものはどれですか。", LET[items.indexOf("motor")]], ["ハンドルを{回|まわ}して、{電気|でんき}をつくることができるものはどれですか。", LET[items.indexOf("hatsudenki")]]], key: items.join(), side: false };
+      } }
+    ]));
+    add(figs("r6.earthFig", [
+      { lv: 1, make: (rng) => {
+        const d = rng.pick([0, 1]);
+        const pts = [[1960, 317], [1970, 326], [1980, 339], [1990, 354], [2000, 369], [2010, 389], [2020, 412]];
+        const g = graph({ xs: [1960, 2020, 10], ys: [300, 420, 20], xl: "({年|とし})", yl: "(ppm)", lines: [{ pts }], w: 72, h: 40, x0: 16, y0: 7 });
+        const q2 = d ? ["{空気|くうき}{中|ちゅう}の{二酸化炭素|にさんかたんそ}がふえる{原因|げんいん}の1つを{答|こた}えましょう。", "{石油|せきゆ}や{石炭|せきたん}などを{燃|も}やすこと({森林|しんりん}がへること など)"] : ["{空気|くうき}{中|ちゅう}の{二酸化炭素|にさんかたんそ}をへらすために、わたしたちにできることを1つ{答|こた}えましょう。", "{電気|でんき}を{大切|たいせつ}に{使|つか}う({木|き}を{植|う}える・{車|くるま}にあまり{乗|の}らない など)"];
+        return { fig: fig(100, 60, g.raw, g.lab, 1.15), text: "グラフは、{空気|くうき}{中|ちゅう}の{二酸化炭素|にさんかたんそ}の{量|りょう}(1ppmは100{万|まん}{分|ぶん}の1)の{変化|へんか}です。", qs: [["{空気|くうき}{中|ちゅう}の{二酸化炭素|にさんかたんそ}の{量|りょう}は、どのように{変|か}わってきましたか。", "ふえてきた"], q2, ["{二酸化炭素|にさんかたんそ}がふえることなどで、{地球|ちきゅう}の{気温|きおん}が{上|あ}がることを{何|なん}といいますか。", "{地球|ちきゅう}{温暖|おんだん}{化|か}"]], key: `e${d}`, side: false };
+      } }
+    ]));
+
+    // ===================== 中2 =====================
+    add(figs("c2r.redoxFig", [
+      { lv: 1, make: () => {
+        let s = rect(4, 22, 34, 7, { f: "#fff", w: 0.5, r: 3 }) + rect(6, 23.5, 12, 4, { f: "#333", w: 0 }) + lamp(14, 52, true);
+        s += path("M38 25 L52 25 L52 48", { w: 0.6 }) + beaker(56, 54, 18, 22, 0.6, { f: C.gray });
+        return { fig: fig(70, 58, s, [M(12, 18, "ア"), M(68, 40, "イ")]), text: "{酸化|さんか}{銅|どう}と{炭素|たんそ}の{粉|こな}をよく{混|ま}ぜて{試験管|しけんかん}アに{入|い}れて{加熱|かねつ}し、{出|で}てきた{気体|きたい}をイの{石灰|せっかい}{水|すい}に{通|とお}しました。", qs: [["{石灰|せっかい}{水|すい}はどうなりましたか。", "{白|しろ}くにごった"], ["{発生|はっせい}した{気体|きたい}は{何|なん}ですか。", "{二酸化炭素|にさんかたんそ}"], ["{加熱|かねつ}{後|ご}、{試験管|しけんかん}アに{残|のこ}った{赤色|あかいろ}の{物質|ぶっしつ}は{何|なん}ですか。", "{銅|どう}"], ["{酸化|さんか}{銅|どう}に{起|お}こった、{酸素|さんそ}がうばわれる{化学|かがく}{変化|へんか}を{何|なん}といいますか。", "{還元|かんげん}"]], key: "cuo", side: true };
+      } },
+      { lv: 2, make: (rng) => {
+        const aHeat = rng.chance(0.5);
+        const rows = [["A", aHeat ? "{加熱|かねつ}した" : "{加熱|かねつ}しない", aHeat ? "つかない" : "つく", aHeat ? "においのある{気体|きたい}" : "においのない{気体|きたい}"], ["B", aHeat ? "{加熱|かねつ}しない" : "{加熱|かねつ}した", aHeat ? "つく" : "つかない", aHeat ? "においのない{気体|きたい}" : "においのある{気体|きたい}"]];
+        const h = aHeat ? "A" : "B";
+        return { fig: table(["{試験管|しけんかん}", "{鉄|てつ}と{硫黄|いおう}の{混合|こんごう}{物|ぶつ}", "{磁石|じしゃく}", "うすい{塩酸|えんさん}を{加|くわ}えると"], rows), text: "{鉄|てつ}{粉|こ}と{硫黄|いおう}の{粉|こな}の{混合|こんごう}{物|ぶつ}を2{本|ほん}の{試験管|しけんかん}A・Bに{入|い}れ、{片方|かたほう}だけを{加熱|かねつ}しました。", qs: [["{加熱|かねつ}したのは、A・Bのどちらですか。", h], [`${h}の{試験管|しけんかん}にできた{物質|ぶっしつ}は{何|なん}ですか。`, "{硫化|りゅうか}{鉄|てつ}"], [`${h}に{塩酸|えんさん}を{加|くわ}えたときに{出|で}る、においのある{気体|きたい}は{何|なん}ですか。`, "{硫化|りゅうか}{水素|すいそ}"], ["{加熱|かねつ}しなかった{試験管|しけんかん}に{塩酸|えんさん}を{加|くわ}えたときに{出|で}る{気体|きたい}は{何|なん}ですか。", "{水素|すいそ}"]], key: `fe${aHeat}`, side: false };
+      } }
+    ]));
+    add(figs("c2r.humidFig", [
+      { lv: 2, make: (rng) => {
+        const SAT = { 0: 4.8, 5: 6.8, 10: 9.4, 15: 12.8, 20: 17.3, 25: 23.1, 30: 30.4 };
+        const T1 = rng.pick([20, 25, 30]), dew = rng.pick([0, 5, 10, 15].filter((t) => t < T1 - 4));
+        const v = SAT[dew], hum = Math.round((v / SAT[T1]) * 100);
+        const pts = Object.entries(SAT).map(([t, s]) => [+t, s]);
+        const g = graph({ xs: [0, 30, 5], ys: [0, 32, 4], xl: "{気温|きおん}(℃)", yl: "{飽和|ほうわ}{水蒸気量|すいじょうきりょう}(g/m³)", lines: [{ pts }], w: 70, h: 44, x0: 16, y0: 9 });
+        const low = rng.pick([0, 5].filter((t) => t < dew)) ?? null;
+        const qs = [[`この{空気|くうき}の{露点|ろてん}は{何|なに}℃ですか。`, `${dew}℃`], [`この{空気|くうき}の{湿度|しつど}は{何|なに}%ですか({小数|しょうすう}{第|だい}1{位|い}を{四捨五入|ししゃごにゅう})。`, `${hum}%`]];
+        if (low !== null && low !== undefined) qs.push([`この{空気|くうき}1m³を${low}℃まで{冷|ひ}やすと、{何|なに}gの{水滴|すいてき}ができますか。`, `${(v - SAT[low]).toFixed(1)}g`]);
+        else qs.push(["{気温|きおん}が{下|さ}がって{露点|ろてん}より{低|ひく}くなると、{空気|くうき}{中|ちゅう}の{水蒸気|すいじょうき}はどうなりますか。", "{水滴|すいてき}になる({凝結|ぎょうけつ}する)"]);
+        return { fig: fig(100, 66, g.raw, g.lab, 1.15), text: `グラフは、{気温|きおん}と{飽和|ほうわ}{水蒸気量|すいじょうきりょう}の{関係|かんけい}です(0℃ 4.8g、5℃ 6.8g、10℃ 9.4g、15℃ 12.8g、20℃ 17.3g、25℃ 23.1g、30℃ 30.4g)。{気温|きおん}${T1}℃の{空気|くうき}1m³に、{水蒸気|すいじょうき}が${v}gふくまれています。`, qs, key: `${T1}${dew}${low}`, side: false };
+      } }
+    ]));
+    add(figs("c2r.heatFig", [
+      { lv: 2, make: (rng) => {
+        const W = rng.pick([[2, 4, 6], [3, 6, 9], [4, 8, 12]]), k = 0.5;
+        const names = rng.shuffle(["A", "B", "C"]);
+        const lines = W.map((w, i) => ({ pts: [0, 1, 2, 3, 4, 5].map((m) => [m, +(w * k * m / 2).toFixed(2)]), label: names[i] }));
+        const top = Math.ceil(W[2] * k * 5 / 2 / 2) * 2 + 2;
+        const g = graph({ xs: [0, 5, 1], ys: [0, top, 2], xl: "{時間|じかん}({分|ぶん})", yl: "{上昇|じょうしょう}{温度|おんど}(℃)", lines, w: 64, h: 44, x0: 14, y0: 9 });
+        const big = names[2];
+        return { fig: fig(96, 66, g.raw, g.lab, 1.15), text: `{同|おな}じ{量|りょう}の{水|みず}に、{電力|でんりょく}が${W[0]}W・${W[1]}W・${W[2]}Wの{電熱|でんねつ}{線|せん}A〜C({順番|じゅんばん}はばらばら)を{入|い}れて{電流|でんりゅう}を{流|なが}し、{水|みず}の{上昇|じょうしょう}{温度|おんど}を{調|しら}べました。`, qs: [["{電力|でんりょく}がいちばん{大|おお}きい{電熱|でんねつ}{線|せん}は、A〜Cのどれですか。", big], ["{電流|でんりゅう}を{流|なが}した{時間|じかん}と{水|みず}の{上昇|じょうしょう}{温度|おんど}には、どのような{関係|かんけい}がありますか。", "{比例|ひれい}する"], [`${W[2]}Wの{電熱|でんねつ}{線|せん}に5{分間|ふんかん}{電流|でんりゅう}を{流|なが}したときに{発生|はっせい}した{熱量|ねつりょう}は{何|なに}Jですか。`, `${W[2] * 300}J`]], key: W.join() + names.join(), side: false };
+      } }
+    ]));
+    add(figs("c2r.staticFig", [
+      { lv: 1, make: (rng) => {
+        const P = [["ストローA と ストローB(どちらもティッシュでこすった)", "しりぞけ{合|あ}う"], ["ストローA と こすったティッシュ", "{引|ひ}き{合|あ}う"]];
+        const rows = rng.shuffle(P.slice()).map((r, i) => [r[0], LET[i], r[1]]);
+        return { fig: table(["{近|ちか}づけたもの", "どうなったか"], rows.map((r) => [r[0], r[1]])), text: "ストロー2{本|ほん}をティッシュペーパーでこすって{静電気|せいでんき}を{起|お}こし、{近|ちか}づけたときのようすを{調|しら}べました。", qs: [...rows.map((r) => [`${r[1]}は、「{引|ひ}き{合|あ}う」「しりぞけ{合|あ}う」のどちらですか。`, r[2]]), ["ストローとティッシュは、{同|おな}じ{種類|しゅるい}・ちがう{種類|しゅるい}のどちらの{電気|でんき}を{帯|お}びていますか。", "ちがう{種類|しゅるい}"]], key: rows.map((r) => r[2]).join(), side: false };
+      } },
+      { lv: 2, make: (rng) => {
+        const up = rng.chance(0.5);
+        let s = `<ellipse cx="40" cy="22" rx="34" ry="11" fill="#fff" stroke="#000" stroke-width="0.5"/>` + rect(4, 20, 6, 4, { f: C.gray, w: 0.4 }) + rect(70, 20, 6, 4, { f: C.gray, w: 0.4 }) + rect(26, 13, 26, 1.5, { f: "#000", w: 0 }) + rect(26, 30.5, 26, 1.5, { f: "#000", w: 0 });
+        s += path(up ? "M10 22 Q40 22 70 16" : "M10 22 Q40 22 70 28", { w: 0.8, c: "#36c" });
+        return { fig: fig(80, 42, s, [T(7, 30, "−{極|ごく}", 2.8), T(73, 30, "+{極|ごく}", 2.8), T(56, 14, up ? "+" : "−", 3.4), T(56, 34, up ? "−" : "+", 3.4)]), text: "クルックス{管|かん}({真空|しんくう}{放電|ほうでん}{管|かん})に{大|おお}きな{電圧|でんあつ}を{加|くわ}えると、−{極|きょく}から{光|ひかり}のすじ({陰極線|いんきょくせん})が{出|で}ました。{上下|じょうげ}の{電極|でんきょく}{板|ばん}に{電圧|でんあつ}を{加|くわ}えると、すじが{曲|ま}がりました。", qs: [["{陰極線|いんきょくせん}は、{何|なん}という{小|ちい}さな{粒子|りゅうし}の{流|なが}れですか。", "{電子|でんし}"], ["{電子|でんし}は、+・−のどちらの{電気|でんき}をもっていますか。", "−"], ["{陰極線|いんきょくせん}が{曲|ま}がったのは、{上下|じょうげ}の{電極|でんきょく}{板|ばん}の+{極|ごく}・−{極|きょく}のどちら{側|がわ}ですか。", "+{極|きょく}{側|がわ}"]], key: `cr${up}`, side: true };
+      } }
+    ]));
+
+    // ===================== 中3 =====================
+    add(figs("c3r.cellFig", [
+      { lv: 1, make: () => {
+        let s = rect(8, 22, 56, 32, { f: "#fff", w: 0.6 }) + rect(8.4, 28, 27.4, 25.6, { f: C.gray, w: 0 }) + rect(36.2, 28, 27.4, 25.6, { f: C.sky, w: 0 }) + line(36, 24, 36, 54, { w: 0.6, dash: "1.2 0.8" });
+        s += rect(18, 14, 4, 34, { f: "#bbb", w: 0.4 }) + rect(50, 14, 4, 34, { f: "#d98", w: 0.4 }) + path("M20 14 L20 6 L52 6 L52 14", { w: 0.5 }) + `<circle cx="36" cy="6" r="3.4" fill="#fff" stroke="#000" stroke-width="0.5"/>`;
+        return { fig: fig(72, 64, s, [T(36, 7.4, "M", 3.4, { bold: true }), M(20, 59, "ア"), M(52, 59, "イ"), T(36, 20, "セロハン", 2.6)], 0.95), text: "{図|ず}はダニエル{電池|でんち}です。アは{亜鉛|あえん}{板|いた}({硫酸|りゅうさん}{亜鉛|あえん}{水溶液|すいようえき})、イは{銅板|どうばん}({硫酸|りゅうさん}{銅|どう}{水溶液|すいようえき})で、{間|あいだ}をセロハンで{仕切|しき}っています。", qs: [["−{極|きょく}になるのは、ア・イのどちらですか。", "ア"], ["{電子|でんし}は、{導線|どうせん}の{中|なか}をア→イ・イ→アのどちらの{向|む}きに{流|なが}れますか。", "ア→イ"], ["イの{銅板|どうばん}の{表面|ひょうめん}では、どのような{変化|へんか}が{起|お}こりますか。", "{銅|どう}イオンが{電子|でんし}を{受|う}けとって、{銅|どう}が{付着|ふちゃく}する"], ["{電池|でんち}は、{何|なに}エネルギーを{電気|でんき}エネルギーに{変|か}える{装置|そうち}ですか。", "{化学|かがく}エネルギー"]], key: "dan", side: true };
+      } },
+      { lv: 2, make: (rng) => {
+        const metals = [["マグネシウム", 3], ["{亜鉛|あえん}", 2], ["{銅|どう}", 1]];
+        const order = rng.shuffle(metals.slice());
+        const sol = ["{硫酸|りゅうさん}マグネシウム{水溶液|すいようえき}", "{硫酸|りゅうさん}{亜鉛|あえん}{水溶液|すいようえき}", "{硫酸|りゅうさん}{銅|どう}{水溶液|すいようえき}"];
+        const rows = order.map(([m, r]) => [m + "{板|いた}", ...metals.map(([, r2], j) => (r2 === r ? "−" : r > r2 ? "{付着|ふちゃく}した" : "{変化|へんか}なし"))]);
+        return { fig: table(["{金属|きんぞく} \\ {水溶液|すいようえき}", ...sol], rows), text: "3{種類|しゅるい}の{金属|きんぞく}{板|いた}を、3{種類|しゅるい}の{水溶液|すいようえき}に{入|い}れ、{金属|きんぞく}{板|ばん}に{物質|ぶっしつ}が{付着|ふちゃく}するかどうかを{調|しら}べました(−は{調|しら}べていない)。", qs: [["{亜鉛|あえん}{板|いた}を{硫酸|りゅうさん}{銅|どう}{水溶液|すいようえき}に{入|い}れたとき、{亜鉛|あえん}{板|ばん}に{付着|ふちゃく}した{物質|ぶっしつ}は{何|なん}ですか。", "{銅|どう}"], ["マグネシウム・{亜鉛|あえん}・{銅|どう}を、イオンになりやすいじゅんにならべましょう。", "マグネシウム→{亜鉛|あえん}→{銅|どう}"], ["この{中|なか}で、いちばんイオンになりにくい{金属|きんぞく}は{何|なん}ですか。", "{銅|どう}"]], key: order.map((x) => x[0]).join(), side: false };
+      } }
+    ]));
+    add(figs("c3r.evoFig", [
+      { lv: 1, make: (rng) => {
+        const G = [["{魚類|ぎょるい}", 5], ["{両生類|りょうせいるい}", 3.6], ["は{虫類|ちゅうるい}", 3.1], ["{哺乳類|ほにゅうるい}", 2.2], ["{鳥類|ちょうるい}", 1.5]];
+        const ask = rng.shuffle([0, 1, 2, 3, 4]);
+        let s = line(10, 4, 10, 58, { w: 0.8 }) + arrowHead(10, 10, 10, 58);
+        const lab = [T(2, 2.5, "{今|いま}から{何|なん}{億|おく}{年|ねん}{前|まえ}", 2.6, { anchor: "start" })];
+        for (let v = 5; v >= 0; v--) { const y = 6 + (5 - v) * 10; s += line(8.5, y, 11.5, y, { w: 0.3 }); lab.push(T(7, y + 1, String(v), 2.6, { anchor: "end" })); }
+        G.forEach(([, a], i) => { const y = 6 + (5 - a) * 10; s += line(10, y, 30, y, { w: 0.3, dash: "1 0.6" }) + `<circle cx="10" cy="${y}" r="0.9" fill="#000"/>`; lab.push(M(33, y, LET[ask.indexOf(i)])); });
+        const pickQ = rng.pick([0, 1, 2]);
+        const EX = [["{両生類|りょうせいるい}は、{何|なに}{類|るい}から{進化|しんか}したと{考|かんが}えられていますか。", "{魚類|ぎょるい}"], ["{鳥類|ちょうるい}は、{何|なに}{類|るい}から{進化|しんか}したと{考|かんが}えられていますか。", "は{虫類|ちゅうるい}"], ["は{虫類|ちゅうるい}と{鳥類|ちょうるい}の{両方|りょうほう}の{特徴|とくちょう}をもつ、{化石|かせき}で{見|み}つかった{動物|どうぶつ}を{何|なん}といいますか。", "{始祖|しそ}{鳥|とり}"]];
+        return { fig: fig(56, 62, s, lab), text: "{図|ず}は、{脊椎動物|せきついどうぶつ}のなかまア〜オが、{地球|ちきゅう}{上|じょう}に{現|あらわ}れたおよその{時代|じだい}を{表|あらわ}したものです({下|した}ほど{新|あたら}しい{時代|じだい})。", qs: [[`いちばん{古|ふる}い{時代|じだい}に{現|あらわ}れた${LET[ask.indexOf(0)]}は{何|なに}{類|るい}ですか。`, "{魚類|ぎょるい}"], [`いちばん{新|あたら}しい{時代|じだい}に{現|あらわ}れた${LET[ask.indexOf(4)]}は{何|なに}{類|るい}ですか。`, "{鳥類|ちょうるい}"], EX[pickQ]], key: ask.join() + pickQ, side: true };
+      } }
+    ]));
+    add(figs("c3r.planetFig", [
+      { lv: 1, make: (rng) => {
+        const P = [["{水星|すいせい}", 0.38, 5.43, 0.39, 0], ["{金星|きんせい}", 0.95, 5.24, 0.72, 0], ["{火星|かせい}", 0.53, 3.93, 1.52, 0], ["{木星|もくせい}", 11.2, 1.33, 5.2, 1], ["{土星|どせい}", 9.45, 0.69, 9.55, 1], ["{天王星|てんおうせい}", 4.01, 1.27, 19.2, 1], ["{海王星|かいおうせい}", 3.88, 1.64, 30.1, 1]];
+        const pick = rng.shuffle([...pickN(rng, P.filter((x) => !x[4]), 2), ...pickN(rng, P.filter((x) => x[4]), 2)]);
+        const rows = pick.map((x, i) => [LET[i], String(x[1]), String(x[2]), String(x[3])]);
+        const jov = pick.map((x, i) => (x[4] ? LET[i] : "")).filter(Boolean).join("、");
+        const near = LET[pick.indexOf([...pick].sort((a, b) => a[3] - b[3])[0])];
+        const light = LET[pick.indexOf([...pick].sort((a, b) => a[2] - b[2])[0])];
+        return { fig: table(["{惑星|わくせい}", "{直径|ちょっけい}({地球|ちきゅう}=1)", "{平均|へいきん}{密度|みつど}(g/cm³)", "{太陽|たいよう}からの{距離|きょり}({地球|ちきゅう}=1)"], rows), text: "{表|ひょう}は、{太陽系|たいようけい}の4つの{惑星|わくせい}ア〜エのようすです。", qs: [["{木星|もくせい}{型|がた}{惑星|わくせい}を2つ{選|えら}び、{記号|きごう}で{答|こた}えましょう。", jov], ["{太陽|たいよう}にいちばん{近|ちか}い{惑星|わくせい}はどれですか。", near], ["{平均|へいきん}{密度|みつど}がいちばん{小|ちい}さい{惑星|わくせい}はどれですか。", light], ["{木星|もくせい}{型|がた}{惑星|わくせい}は、{地球|ちきゅう}{型|がた}{惑星|わくせい}とくらべて、{大|おお}きさと{密度|みつど}にどんな{特徴|とくちょう}がありますか。", "{大|おお}きく、{密度|みつど}が{小|ちい}さい"]], key: pick.map((x) => x[0]).join(), side: false };
+      } }
+    ]));
+    add(figs("c3r.powerFig", [
+      { lv: 1, make: (rng) => {
+        const K = rng.pick([["{火力|かりょく}{発電|はつでん}", ["{化学|かがく}エネルギー", "{熱|ねつ}エネルギー", "{運動|うんどう}エネルギー", "{電気|でんき}エネルギー"], "{石油|せきゆ}・{石炭|せきたん}・{天然|てんねん}ガスなどの{燃料|ねんりょう}"], ["{水力|すいりょく}{発電|はつでん}", ["{位置|いち}エネルギー", "{運動|うんどう}エネルギー", "{電気|でんき}エネルギー"], "ダムにためた{水|みず}"], ["{太陽光|たいようこう}{発電|はつでん}", ["{光|ひかり}エネルギー", "{電気|でんき}エネルギー"], "{太陽|たいよう}の{光|ひかり}"]]);
+        const chain = K[1], n = chain.length, bw = n === 4 ? 30 : 38, gap = 8;
+        const hide = n === 2 ? [0] : rng.shuffle([...Array(n - 1).keys()]).slice(0, 2).sort();
+        let s = "";
+        const lab = [];
+        chain.forEach((c, i) => {
+          const x = 2 + i * (bw + gap);
+          s += rect(x, 6, bw, 12, { f: "#fff", w: 0.5, r: 1.5 });
+          if (i < n - 1) s += arrow(x + bw + 1, 12, x + bw + gap - 1, 12, { w: 0.5 });
+          lab.push(hide.includes(i) ? M(x + bw / 2, 11, LET[hide.indexOf(i)]) : T(x + bw / 2, 13.3, c, 2.9));
+        });
+        const W = 4 + n * bw + (n - 1) * gap;
+        return { fig: fig(W, 22, s, lab, 1.0), text: `${K[0]}で、エネルギーが{移|うつ}り{変|か}わるようすを{表|あらわ}しました。${K[0]}では、${K[2]}を{利用|りよう}します。`, qs: [...hide.map((i, j) => [`${LET[j]}にあてはまるエネルギーは{何|なん}ですか。`, chain[i]]), ["エネルギーが{移|うつ}り{変|か}わるとき、エネルギーの{総量|そうりょう}はどうなりますか。", "{変|か}わらない({保存|ほぞん}される)"]], key: K[0] + hide.join(), side: false };
+      } }
+    ]));
+
+    // ===================== 実験の考え方(条件をそろえる・結果からわかること) =====================
+    add(figs("r5.growFig", [
+      { lv: 1, make: (rng) => {
+        const base = [["{日光|にっこう}に{当|あ}てる", "{肥料|ひりょう}あり", "よく{育|そだ}った"], ["{日光|にっこう}に{当|あ}てない", "{肥料|ひりょう}あり", "{葉|は}の{色|いろ}がうすく、くきが{細|ほそ}かった"], ["{日光|にっこう}に{当|あ}てる", "{肥料|ひりょう}なし", "あまり{育|そだ}たなかった"]];
+        const order = rng.shuffle([0, 1, 2]);
+        const L = (k) => LET[order.indexOf(k)];
+        const rows = order.map((k, i) => [LET[i], ...base[k]]);
+        return { fig: table(["", "{日光|にっこう}", "{肥料|ひりょう}", "2{週間|しゅうかん}{後|ご}のようす"], rows), text: "インゲンマメのなえを3つ{用意|ようい}し、{日光|にっこう}と{肥料|ひりょう}の{条件|じょうけん}をかえて{育|そだ}てました({水|みず}・{温度|おんど}は{同|おな}じ)。", qs: [["{日光|にっこう}が{成長|せいちょう}にかかわるかを{調|しら}べるには、どれとどれをくらべますか。", [L(0), L(1)].sort().join("と")], ["{肥料|ひりょう}が{成長|せいちょう}にかかわるかを{調|しら}べるには、どれとどれをくらべますか。", [L(0), L(2)].sort().join("と")], ["この{実験|じっけん}から、{植物|しょくぶつ}がよく{成長|せいちょう}するために{必要|ひつよう}なことを2つ{答|こた}えましょう。", "{日光|にっこう}、{肥料|ひりょう}"]], key: order.join(), side: false };
+      } }
+    ]));
+    add(figs("r6.fireFig", [
+      { lv: 1, make: (rng) => {
+        const kinds = [[true, false, "すぐに{消|き}えた"], [false, true, "{燃|も}え{続|つづ}けた"], [false, false, "しばらくして{消|き}えた"]];
+        const order = rng.shuffle([0, 1, 2]);
+        let s = "";
+        order.forEach((k, i) => {
+          const [lid, gap] = kinds[k], x = 6 + i * 30;
+          s += (gap ? rect(x, 44, 22, 3, { f: C.gray, w: 0.4 }) + rect(x + 2, 47, 4, 2, { f: C.gray, w: 0.3 }) + rect(x + 16, 47, 4, 2, { f: C.gray, w: 0.3 }) : rect(x, 46, 22, 3, { f: C.gray, w: 0.4 }));
+          s += path(`M${x + 3} ${gap ? 44 : 46} L${x + 3} 14 Q${x + 3} 10 ${x + 7} 9 L${x + 7} 6 L${x + 15} 6 L${x + 15} 9 Q${x + 19} 10 ${x + 19} 14 L${x + 19} ${gap ? 44 : 46}`, { w: 0.5 });
+          if (lid) s += rect(x + 5, 4, 12, 2, { f: "#666", w: 0.3 });
+          s += rect(x + 9.5, gap ? 34 : 36, 3, 10, { f: "#fff", w: 0.4 }) + path(`M${x + 11} ${gap ? 28 : 30} Q${x + 13} ${gap ? 31 : 33} ${x + 11} ${gap ? 34 : 36} Q${x + 9} ${gap ? 31 : 33} ${x + 11} ${gap ? 28 : 30}`, { f: C.yellow, w: 0.3 });
+        });
+        const burn = LET[order.indexOf(1)];
+        return { fig: fig(96, 58, s, order.map((k, i) => M(17 + i * 30, 54, LET[i]))), text: "{底|そこ}のないびんと、すき{間|ま}のあるねん{土|ど}・ないねん{土|ど}を{使|つか}って、{火|ひ}のついたろうそくにかぶせました(ふたをしたものもあります)。", qs: [["ろうそくがいちばん{長|なが}く{燃|も}え{続|つづ}けたのは、ア〜ウのどれですか。", burn], [`${burn}のろうそくが{燃|も}え{続|つづ}けたのはなぜですか。`, "{下|した}のすき{間|ま}から{新|あたら}しい{空気|くうき}が{入|はい}り、{上|うえ}から{出|で}ていく({空気|くうき}が{入|い}れかわる)から"], ["ものが{燃|も}え{続|つづ}けるためには、{何|なに}が{必要|ひつよう}ですか。", "{新|あたら}しい{空気|くうき}({空気|くうき}の{入|い}れかわり)"]], key: order.join(), side: false };
+      } }
+    ]));
+    add(figs("r6.salivaFig", [
+      { lv: 1, make: (rng) => {
+        const aSal = rng.chance(0.5);
+        const rows = [["ア", aSal ? "だ{液|えき}を{入|い}れる" : "{水|みず}を{入|い}れる", aSal ? "{変化|へんか}しない" : "{青|あお}むらさき{色|しょく}になる"], ["イ", aSal ? "{水|みず}を{入|い}れる" : "だ{液|えき}を{入|い}れる", aSal ? "{青|あお}むらさき{色|しょく}になる" : "{変化|へんか}しない"]];
+        const sal = aSal ? "ア" : "イ", wat = aSal ? "イ" : "ア";
+        return { fig: table(["{試験管|しけんかん}(ご{飯|はん}つぶの{液|えき})", "{入|い}れたもの", "ヨウ{素|そ}{液|えき}を{入|い}れたようす"], rows), text: "ご{飯|はん}つぶをもみ{出|だ}した{液|えき}を2{本|ほん}の{試験管|しけんかん}に{入|い}れ、{片方|かたほう}にはだ{液|えき}、もう{片方|かたほう}には{水|みず}を{入|い}れて、{約|やく}40℃の{湯|ゆ}に10{分間|ふんかん}つけました。", qs: [["でんぷんがなくなったのは、ア・イのどちらですか。", sal], ["この{実験|じっけん}からわかることを{書|か}きましょう。", "だ{液|えき}には、でんぷんを{別|べつ}のものにかえるはたらきがある"], ["{湯|ゆ}の{温度|おんど}を{約|やく}40℃にしたのはなぜですか。", "{人|ひと}の{体温|たいおん}に{近|ちか}い{温度|おんど}にするため"], [`${wat}の{試験管|しけんかん}を{用意|ようい}したのはなぜですか。`, "でんぷんの{変化|へんか}が、だ{液|えき}のはたらきによることをたしかめるため"]], key: `s${aSal}`, side: false };
+      } }
+    ]));
+    add(figs("c2r.btbFig", [
+      { lv: 2, make: (rng) => {
+        const order = rng.shuffle([0, 1, 2]);
+        const base = [["オオカナダモを{入|い}れる", "{当|あ}てる", "{青色|あおいろ}"], ["オオカナダモを{入|い}れる", "{当|あ}てない", "{黄色|きいろ}"], ["{何|なに}も{入|い}れない", "{当|あ}てる", "{緑色|りょくしょく}({変化|へんか}なし)"]];
+        const rows = order.map((k, i) => [LET[i], ...base[k]]);
+        const L = (k) => LET[order.indexOf(k)];
+        return { fig: table(["{試験管|しけんかん}", "{中|なか}に{入|い}れたもの", "{光|ひかり}", "{数|すう}{時間|じかん}{後|ご}のBTB{溶液|ようえき}の{色|いろ}"], rows), text: "{息|いき}をふきこんで{緑色|りょくしょく}にしたBTB{溶液|ようえき}を3{本|ぼん}の{試験管|しけんかん}に{入|い}れ、{条件|じょうけん}をかえて{置|お}きました({光|ひかり}を{当|あ}てないものはアルミニウムはくでおおいました)。", qs: [[`${L(0)}が{青色|あおいろ}になったのはなぜですか。`, "オオカナダモが{光合成|こうごうせい}をして、{二酸化炭素|にさんかたんそ}を{使|つか}ったから"], [`${L(1)}が{黄色|きいろ}になったのはなぜですか。`, "オオカナダモが{呼吸|こきゅう}だけを{行|おこな}い、{二酸化炭素|にさんかたんそ}を{出|だ}したから"], [`${L(2)}を{用意|ようい}したのはなぜですか。`, "{色|いろ}の{変化|へんか}が、オオカナダモのはたらきによることを{確|たし}かめるため"], ["このように、{調|しら}べたい{条件|じょうけん}{以外|いがい}を{同|おな}じにして{行|おこな}う{実験|じっけん}を{何|なん}といいますか。", "{対照|たいしょう}{実験|じっけん}"]], key: order.join(), side: false };
+      } }
+    ]));
+    add(figs("c2r.amyFig", [
+      { lv: 2, make: (rng) => {
+        const sw = rng.chance(0.5);
+        const rows = [["A", sw ? "だ{液|えき}" : "{水|みず}", "ヨウ{素|そ}{液|えき}", sw ? "{変化|へんか}なし" : "{青|あお}{紫色|むらさきいろ}"], ["B", sw ? "{水|みず}" : "だ{液|えき}", "ヨウ{素|そ}{液|えき}", sw ? "{青|あお}{紫色|むらさきいろ}" : "{変化|へんか}なし"], ["C", sw ? "だ{液|えき}" : "{水|みず}", "ベネジクト{液|えき}({加熱|かねつ})", sw ? "{赤褐色|せきかっしょく}の{沈殿|ちんでん}" : "{変化|へんか}なし"], ["D", sw ? "{水|みず}" : "だ{液|えき}", "ベネジクト{液|えき}({加熱|かねつ})", sw ? "{変化|へんか}なし" : "{赤褐色|せきかっしょく}の{沈殿|ちんでん}"]];
+        const ab = "AとB", cd = "CとD";
+        return { fig: table(["{試験管|しけんかん}", "デンプン{溶液|ようえき}に{加|くわ}えたもの", "{調|しら}べた{薬品|やくひん}", "{結果|けっか}"], rows), text: "デンプン{溶液|ようえき}を4{本|ほん}の{試験管|しけんかん}A〜Dに{入|い}れ、だ{液|えき}か{水|みず}を{加|くわ}えて、{約|やく}40℃の{湯|ゆ}に10{分間|ふんかん}{入|い}れたあと、{薬品|やくひん}で{調|しら}べました。", qs: [[`${ab}の{結果|けっか}からわかることを{書|か}きましょう。`, "だ{液|えき}によってデンプンがなくなった({分解|ぶんかい}された)"], [`${cd}の{結果|けっか}からわかることを{書|か}きましょう。`, "だ{液|えき}によって{麦芽糖|ばくがとう}などの{糖|とう}ができた"], ["だ{液|えき}にふくまれる、デンプンを{分解|ぶんかい}する{消化|しょうか}{酵素|こうそ}を{何|なん}といいますか。", "アミラーゼ"]], key: `a${sw}`, side: false };
+      } }
+    ]));
+
+    // ===================== 単元にくわえる =====================
+    const grades = [typeof r1sei1Grade !== "undefined" && r1sei1Grade, typeof r2sei2Grade !== "undefined" && r2sei2Grade, r3Grade, r4Grade, r5Grade, r6Grade, r7chu1Grade, r8chu2Grade, r9chu3Grade].filter(Boolean);
+    const unitOf = (uid) => {
+      const u = grades.flatMap((g) => g.units).find((x) => x.id === uid);
+      if (!u) throw new Error("{図|ず}をくわえる{単元|たんげん}がない: " + uid);
+      return u;
+    };
+    const PLACE = [
+      ["s1-01", "がっこうの へや(え)", "s1.roomFig"],
+      ["s2-02", "まちの しせつ(え)", "s2.townFig"],
+      ["s2-03", "いきものの すみか(え)", "s2.homeFig"],
+      ["r3-01", "かんさつの{道具|どうぐ}と{生|い}き{物|もの}({絵|え})", "r3.lookFig"],
+      ["r3-08", "{音|おと}の{実験|じっけん}({表|ひょう}・{絵|え})", "r3.soundFig"],
+      ["r4-01", "{季節|きせつ}のようすと{気温|きおん}({絵|え}・グラフ)", "r4.seasonFig"],
+      ["r4-04", "{水|みず}のしみこみ{方|かた}の{実験|じっけん}({表|ひょう})", "r4.soakFig"],
+      ["r4-06", "じょう{発|はつ}の{実験|じっけん}({図|ず})", "r4.evapFig"],
+      ["r4-07", "{注|ちゅう}しゃ{器|き}の{実験|じっけん}({図|ず})", "r4.syringeFig"],
+      ["r5-01", "{雲|くも}の{動|うご}きと{天気|てんき}({図|ず})", "r5.cloudFig"],
+      ["r5-02", "{成長|せいちょう}の{条件|じょうけん}の{実験|じっけん}({表|ひょう})", "r5.growFig"],
+      ["r5-05", "{台風|たいふう}の{進|すす}み{方|かた}({図|ず})", "r5.typhoonFig"],
+      ["r5-08", "{子宮|しきゅう}の{中|なか}の{子|こ}ども({図|ず})", "r5.wombFig"],
+      ["r6-01", "{燃|も}え{続|つづ}ける{条件|じょうけん}の{実験|じっけん}({図|ず})", "r6.fireFig"],
+      ["r6-02", "だ{液|えき}のはたらきの{実験|じっけん}({表|ひょう})", "r6.salivaFig"],
+      ["r6-03", "{葉|は}の{実験|じっけん}({表|ひょう})", "r6.leafFig"],
+      ["r6-04", "{食物|しょくもつ}{連|れん}さ({絵|え})", "r6.chainFig"],
+      ["r6-07", "{断層|だんそう}と{火山|かざん}({図|ず})", "r6.faultFig"],
+      ["r6-09", "{電気|でんき}の{利用|りよう}({表|ひょう}・{絵|え})", "r6.elecFig"],
+      ["r6-11", "{二酸化炭素|にさんかたんそ}のグラフ", "r6.earthFig"],
+      ["k2-02", "{酸化|さんか}{銅|どう}の{還元|かんげん}・{鉄|てつ}と{硫黄|いおう}({図|ず}・{表|ひょう})", "c2r.redoxFig"],
+      ["k2-05", "{光合成|こうごうせい}の{対照|たいしょう}{実験|じっけん}({表|ひょう})", "c2r.btbFig"],
+      ["k2-06", "だ{液|えき}のはたらきの{実験|じっけん}({表|ひょう})", "c2r.amyFig"],
+      ["k2-09", "{飽和|ほうわ}{水蒸気量|すいじょうきりょう}のグラフ", "c2r.humidFig"],
+      ["k2-12", "{電熱|でんねつ}{線|せん}と{水|みず}の{上昇|じょうしょう}{温度|おんど}(グラフ)", "c2r.heatFig"],
+      ["k2-14", "{静電気|せいでんき}と{陰極線|いんきょくせん}({表|ひょう}・{図|ず})", "c2r.staticFig"],
+      ["k3-02", "ダニエル{電池|でんち}・イオンへのなりやすさ({図|ず}・{表|ひょう})", "c3r.cellFig"],
+      ["k3-06", "{脊椎動物|せきついどうぶつ}の{出現|しゅつげん}({図|ず})", "c3r.evoFig"],
+      ["k3-12", "{惑星|わくせい}の{特徴|とくちょう}({表|ひょう})", "c3r.planetFig"],
+      ["k3-14", "{発電|はつでん}とエネルギーの{移|うつ}り{変|か}わり({図|ず})", "c3r.powerFig"]
+    ];
+    for (const [uid, label, gid] of PLACE) {
+      if (!out.some((g) => g.id === gid)) throw new Error("{図|ず}の{部品|ぶひん}がない: " + gid);
+      addTopic(unitOf(uid), label, gid, "f");
+    }
+    return out;
+  })();
+
+  // add/rmore
+  // このファイルは tools/rika/annotate.js が content/rmore.js から作ったもの。直すときは content/rmore.js を直して作りなおす。
+  // 単元ごとの ○× の問題をふやす(まとめ(rsum.js)の問題にくわえる)
+  // 1単元に ○× が 8〜10問 になるようにする(名前をきく問題から作る ○× もふくめて)
+  var rmore = [];
+  var rmoreTf = {
+    // ===== 1年 生活 =====
+    "s1-01": `
+  1|?ほけんしつには、ほけんの せんせいが いる。|○
+  1|?としょしつの ほんは、かりたら かえさなくて よい。|×
+  1|?しょくいんしつには、せんせいたちが いる。|○
+  2|?おんがくしつでは、うたを うたったり がっきを ひいたり する。|○
+  1|?ろうかは、しずかに あるく。|○
+  2|?こうちょうせんせいの へやは、こうちょうしつです。|○
+  `,
+    "s1-02": `
+  1|?アサガオの たねは、つちに まいて みずを やる。|○
+  2|?アサガオの つるは、ささえが なくても まっすぐ そらに のびる。|×
+  1|?アサガオの はなは、あさに さく。|○
+  2|?アサガオの めが でたら、もう みずは いらない。|×
+  `,
+    "s1-03": `
+  1|?ダンゴムシは、さわると まるく なる。|○
+  2|?いきものを さわる ときは、やさしく さわる。|○
+  1|?ダンゴムシは、みずの なかに すんで いる。|×
+  2|?いきものを かう ときは、すんで いた ばしょと にた ようすに する。|○
+  `,
+    "s1-04": `
+  1|?なつは、プールや みずあそびを する。|○
+  2|?あきに なると、はっぱの いろが かわる きが ある。|○
+  1|?ゆきが ふるのは なつです。|×
+  2|?ふゆに なると、セミが たくさん なく。|×
+  1|?あきには、ドングリが おちて いる。|○
+  `,
+    // ===== 2年 生活 =====
+    "s2-01": `
+  1|?ミニトマトの みは、はじめ みどりいろで、あとで あかく なる。|○
+  2|?やさいの はたけの ざっそうは、そのままに して おく。|×
+  1|?キュウリは、つるが のびて そだつ。|○
+  2|?やさいは、ひの あたらない ところで よく そだつ。|×
+  1|?そだてた やさいは、たべる ことが できる。|○
+  2|?ミニトマトの みは、はなが さいた あとに できる。|○
+  `,
+    "s2-02": `
+  1|?こまった ことが あったら、こうばんの おまわりさんに そうだんできる。|○
+  2|?としょかんでは、おおきな こえで はなす。|×
+  1|?かじの ときは、しょうぼうしゃが くる。|○
+  2|?まちの ひとに はなしを きく ときは、あいさつを してから きく。|○
+  1|?しんごうが あかの ときは、わたって よい。|×
+  2|?びょういんでは、しずかに する。|○
+  `,
+    "s2-03": `
+  1|?ザリガニは、みずの なかで かう。|○
+  2|?いきものの えさは、なんでも よい。|×
+  1|?ダンゴムシは、おちばを たべる。|○
+  2|?メダカの みずそうは、ひが ずっと あたる まどべに おく。|×
+  1|?いきものが しんだ ときは、そのままに して おく。|×
+  2|?カブトムシの よう{虫|むし}は、つちの なかで そだつ。|○
+  `,
+    "s2-04": `
+  1|?ゴムを ながく のばすと、くるまは とおくまで はしる。|○
+  2|?かぜが つよいと、かざぐるまは はやく まわる。|○
+  1|?じしゃくは、かみに よく つく。|×
+  2|?ふうせんの くうきが でる ちからで、くるまを うごかす ことが できる。|○
+  1|?おもちゃは、つかったら かたづける。|○
+  2|?ゴムは、のばす ほど もとに もどる ちからが よわく なる。|×
+  `,
+    // ===== 3年 =====
+    "r3-01": `
+  1|?{虫|むし}めがねで、{太陽|たいよう}を{見|み}てはいけない。|○
+  2|?かんさつするときは、{色|いろ}・{形|かたち}・{大|おお}きさなどに{注目|ちゅうもく}する。|○
+  1|?タンポポの{花|はな}は、どれも{同|おな}じ{大|おお}きさである。|×
+  2|?{生|い}き{物|もの}によって、{色|いろ}や{形|かたち}、{大|おお}きさにちがいがある。|○
+  1|?かんさつした{生|い}き{物|もの}は、つかまえて{全部|ぜんぶ}{持|も}ち{帰|かえ}る。|×
+  2|?{虫|むし}めがねは、{見|み}るものを{動|うご}かせないときは、{自分|じぶん}が{動|うご}いてピントを{合|あ}わせる。|○
+  `,
+    "r3-02": `
+  1|?{植物|しょくぶつ}の{体|からだ}は、{根|ね}・くき・{葉|は}からできている。|○
+  2|?ホウセンカの{子葉|しよう}は、{育|そだ}ったあとの{葉|は}と{同|おな}じ{形|かたち}をしている。|×
+  1|?{植物|しょくぶつ}は、{育|そだ}つにつれて、くきがのびて{葉|は}の{数|かず}がふえる。|○
+  `,
+    "r3-03": `
+  1|?モンシロチョウは、たまご→よう{虫|むし}→さなぎ→{成虫|せいちゅう}のじゅんに{育|そだ}つ。|○
+  2|?モンシロチョウのよう{虫|むし}は、{皮|かわ}をぬいで{大|おお}きくなる。|○
+  1|?モンシロチョウは、キャベツの{葉|は}のうらなどにたまごをうむ。|○
+  2|?トンボは、さなぎになってから{成虫|せいちゅう}になる。|×
+  `,
+    "r3-04": `
+  1|?{風|かぜ}の{力|ちから}で、ものを{動|うご}かすことができる。|○
+  2|?ゴムを{長|なが}くのばすほど、{車|くるま}が{動|うご}くきょりは{長|なが}くなる。|○
+  1|?ゴムの{力|ちから}では、ものを{動|うご}かすことはできない。|×
+  2|?{風|かぜ}を{強|つよ}くすると、{風|かぜ}をうける{車|くるま}は{遠|とお}くまで{動|うご}く。|○
+  1|?ゴムは、のばすと{元|もと}にもどろうとする。|○
+  2|?{帆|ほ}に{当|あ}たる{風|かぜ}が{弱|よわ}いほど、{車|くるま}は{速|はや}く{動|うご}く。|×
+  2|?ゴムの{本数|ほんすう}をふやすと、{車|くるま}が{動|うご}くきょりは{短|みじか}くなる。|×
+  `,
+    "r3-05": `
+  1|?こん{虫|ちゅう}の{体|からだ}は、{頭|あたま}・むね・はらの3つの{部分|ぶぶん}に{分|わ}かれている。|○
+  2|?こん{虫|ちゅう}のあしは、8{本|ぽん}である。|×
+  1|?バッタは、さなぎにならずに{成虫|せいちゅう}になる。|○
+  2|?こん{虫|ちゅう}のしょっかくは、{頭|あたま}についている。|○
+  1|?ダンゴムシは、こん{虫|ちゅう}である。|×
+  `,
+    "r3-06": `
+  1|?かげは、{太陽|たいよう}の{反対|はんたい}がわにできる。|○
+  2|?{太陽|たいよう}は、{東|ひがし}から{出|で}て、{南|みなみ}の{空|そら}を{通|とお}り、{西|にし}にしずむ。|○
+  1|?{日|ひ}なたの{地面|じめん}は、{日|ひ}かげの{地面|じめん}よりつめたい。|×
+  2|?{正午|しょうご}ごろ、かげは{北|きた}の{方|ほう}にできる。|○
+  1|?{太陽|たいよう}の{光|ひかり}をさえぎるものがあると、かげができる。|○
+  2|?{時間|じかん}がたつと、かげの{向|む}きは{東|ひがし}から{西|にし}へかわる。|×
+  `,
+    "r3-07": `
+  1|?{日光|にっこう}は、まっすぐに{進|すす}む。|○
+  2|?かがみではね{返|かえ}した{日光|にっこう}も、まっすぐに{進|すす}む。|○
+  1|?{虫|むし}めがねで{日光|にっこう}を{集|あつ}めたところを{小|ちい}さくするほど、{明|あか}るくあつくなる。|○
+  2|?{日光|にっこう}が{当|あ}たったところは、{当|あ}たっていないところより{明|あか}るくてあたたかい。|○
+  1|?{虫|むし}めがねで{集|あつ}めた{日光|にっこう}で、{黒|くろ}い{紙|かみ}がこげることがある。|○
+  2|?はね{返|かえ}した{日光|にっこう}が{当|あ}たったところは、つめたくなる。|×
+  `,
+    "r3-08": `
+  1|?{音|おと}が{出|で}ているものは、ふるえている。|○
+  2|?{大|おお}きな{音|おと}のときは、もののふるえが{大|おお}きい。|○
+  1|?たいこのふるえを{止|と}めると、{音|おと}も{止|と}まる。|○
+  2|?{糸|いと}{電話|でんわ}は、{糸|いと}をたるませたほうが{音|おと}がよくつたわる。|×
+  1|?{音|おと}は、{糸|いと}や{鉄|てつ}ぼうなどのものをつたわる。|○
+  2|?{音|おと}が{出|で}ているもののふるえを{手|て}でおさえても、{音|おと}はかわらない。|×
+  1|?{小|ちい}さな{音|おと}のときは、もののふるえが{小|ちい}さい。|○
+  `,
+    "r3-09": `
+  1|?ものの{形|かたち}をかえても、{重|おも}さはかわらない。|○
+  2|?{同|おな}じ{体積|たいせき}でも、ものの{種類|しゅるい}がちがうと{重|おも}さがちがう。|○
+  1|?ねん{土|ど}を{細長|ほそなが}くのばすと、{重|おも}さは{軽|かる}くなる。|×
+  2|?はかりを{使|つか}うと、ものの{重|おも}さをくらべることができる。|○
+  `,
+    "r3-10": `
+  1|?かん{電池|でんち}の+きょくと−きょくに{導線|どうせん}をつなぐと、{豆|まめ}{電球|でんきゅう}に{明|あ}かりがつく。|○
+  2|?{紙|かみ}やプラスチックは、{電気|でんき}を{通|とお}す。|×
+  1|?{鉄|てつ}のクリップは、{電気|でんき}を{通|とお}す。|○
+  2|?かん{電池|でんち}の{同|おな}じきょくに2{本|ほん}の{導線|どうせん}をつないでも、{明|あ}かりはつく。|×
+  1|?ソケットを{使|つか}わなくても、{豆|まめ}{電球|でんきゅう}に{明|あ}かりをつけることができる。|○
+  `,
+    "r3-11": `
+  1|?じしゃくは、{鉄|てつ}を{引|ひ}きつける。|○
+  2|?じしゃくの{同|おな}じきょくどうしは、{引|ひ}き{合|あ}う。|×
+  1|?じしゃくのちがうきょくどうしは、{引|ひ}き{合|あ}う。|○
+  2|?じしゃくは、{間|あいだ}に{紙|かみ}があっても{鉄|てつ}を{引|ひ}きつける。|○
+  1|?アルミニウムのかんは、じしゃくにつく。|×
+  2|?{方位|ほうい}じしんのはりは、{北|きた}と{南|みなみ}をさして{止|と}まる。|○
+  1|?じしゃくのきょくは、N きょくと S きょくの2つある。|○
+  `,
+    // ===== 4年 =====
+    "r4-01": `
+  1|?{春|はる}になると、サクラの{花|はな}がさく。|○
+  2|?{夏|なつ}になると、ヘチマのくきは{大|おお}きくのびる。|○
+  1|?{冬|ふゆ}になると、こん{虫|ちゅう}はたくさん{動|うご}き{回|まわ}る。|×
+  2|?{秋|あき}になると、ヘチマの{実|み}が{大|おお}きくなり、たねができる。|○
+  1|?あたたかい{季節|きせつ}には、{生|い}き{物|もの}の{活動|かつどう}がさかんになる。|○
+  2|?ツバメは、{秋|あき}になると{南|みなみ}の{国|くに}へうつっていく。|○
+  `,
+    "r4-02": `
+  1|?{晴|は}れの{日|ひ}は、1{日|にち}の{気温|きおん}の{変化|へんか}が{大|おお}きい。|○
+  2|?{晴|は}れの{日|ひ}の{気温|きおん}は、ふつう{昼|ひる}すぎ({午後|ごご}2{時|じ}ごろ)にいちばん{高|たか}くなる。|○
+  1|?{気温|きおん}は、{地面|じめん}から1.2〜1.5mの{高|たか}さではかる。|○
+  2|?{気温|きおん}をはかるときは、{温度|おんど}{計|けい}に{日光|にっこう}を{直|なお}せつ{当|あ}てる。|×
+  2|?{雨|あめ}の{日|ひ}は、1{日|にち}の{気温|きおん}の{変化|へんか}が{小|ちい}さい。|○
+  `,
+    "r4-03": `
+  1|?{電流|でんりゅう}は、かん{電池|でんち}の+きょくから−きょくへ{流|なが}れる。|○
+  2|?かん{電池|でんち}2こを{直列|ちょくれつ}つなぎにすると、1このときより{電流|でんりゅう}が{大|おお}きくなる。|○
+  1|?かん{電池|でんち}2こをへい{列|れつ}つなぎにすると、モーターは1このときより{速|はや}く{回|まわ}る。|×
+  `,
+    "r4-04": `
+  1|?{雨水|あまみず}は、{高|たか}いところから{低|ひく}いところへ{流|なが}れる。|○
+  2|?つぶの{大|おお}きい{土|ど}ほど、{水|みず}がしみこみやすい。|○
+  1|?{地面|じめん}のかたむきは、{雨水|あまみず}の{流|なが}れ{方|かた}とは{関係|かんけい}がない。|×
+  2|?じゃりは、すなより{水|みず}がしみこみにくい。|×
+  1|?{雨|あめ}がふったあと、{低|ひく}いところに{水|みず}たまりができやすい。|○
+  2|?ビー{玉|だま}をおいて、{地面|じめん}のかたむきを{調|しら}べることができる。|○
+  1|?{雨水|あまみず}の{流|なが}れは、{地面|じめん}をけずることがある。|○
+  `,
+    "r4-05": `
+  1|?{月|つき}は、{東|ひがし}の{空|そら}からのぼり、{南|みなみ}の{空|そら}を{通|とお}って{西|にし}の{空|そら}にしずむ。|○
+  2|?{星|ほし}には、{明|あか}るさや{色|いろ}のちがいがある。|○
+  1|?{月|つき}は、{自分|じぶん}で{光|ひかり}を{出|だ}している。|×
+  2|?{夏|なつ}の{大|だい}{三角|さんかく}は、こと{座|ざ}のベガ、わし{座|ざ}のアルタイル、はくちょう{座|ざ}のデネブでできている。|○
+  `,
+    "r4-06": `
+  1|?{水|みず}は、ふっとうしなくても、じょう{発|はっ}する。|○
+  2|?{地面|じめん}の{水|みず}も、じょう{発|はっ}して{空気|くうき}{中|ちゅう}に{出|で}ていく。|○
+  1|?{冬|ふゆ}、まどガラスの{内|うち}がわに{水|すい}てきがつくことがある。|○
+  2|?{空気|くうき}{中|ちゅう}には、{水|みず}じょう{気|き}はふくまれていない。|×
+  1|?ほしたせんたくものがかわくのは、{水|みず}がじょう{発|はっ}するからである。|○
+  `,
+    "r4-07": `
+  1|?とじこめた{空気|くうき}をおすと、{体積|たいせき}は{小|ちい}さくなる。|○
+  2|?とじこめた{空気|くうき}をおすほど、おし{返|かえ}す{力|ちから}は{大|おお}きくなる。|○
+  1|?とじこめた{水|みず}は、おしても{体積|たいせき}がかわらない。|○
+  2|?{空気|くうき}は、おしちぢめることができない。|×
+  1|?{空気|くうき}でっぽうは、{玉|たま}と{玉|たま}の{間|あいだ}に{空気|くうき}をとじこめて{使|つか}う。|○
+  2|?とじこめた{水|みず}をおすと、{水|みず}の{体積|たいせき}は{小|ちい}さくなる。|×
+  1|?{自転車|じてんしゃ}のタイヤやボールには、{空気|くうき}のせいしつが{利用|りよう}されている。|○
+  `,
+    "r4-08": `
+  1|?{体|からだ}には、たくさんのほねがある。|○
+  2|?うでを{曲|ま}げるとき、{内|うち}がわのきん{肉|にく}はちぢむ。|○
+  1|?ほねは、やわらかくて{曲|ま}げることができる。|×
+  2|?{頭|あたま}のほねは、のうをまもっている。|○
+  `,
+    "r4-09": `
+  1|?{空気|くうき}は、あたためると{体積|たいせき}が{大|おお}きくなる。|○
+  2|?{空気|くうき}は、{冷|ひ}やすと{体積|たいせき}が{小|ちい}さくなる。|○
+  1|?{水|みず}は、あたためても{体積|たいせき}がかわらない。|×
+  2|?{温度|おんど}による{体積|たいせき}の{変化|へんか}は、{空気|くうき}がいちばん{大|おお}きく、{金|きん}ぞくがいちばん{小|ちい}さい。|○
+  1|?{金|きん}ぞくの{玉|たま}をあたためると、{輪|わ}を{通|とお}りにくくなる。|○
+  2|?{水|みず}を{冷|ひ}やすと、{体積|たいせき}は{大|おお}きくなる。|×
+  1|?ガラス{管|かん}のついたせんをした{試験管|しけんかん}をあたためると、{中|なか}の{空気|くうき}の{体積|たいせき}は{大|おお}きくなる。|○
+  `,
+    "r4-10": `
+  1|?{金|きん}ぞくは、{熱|ねっ}したところから{順|じゅん}にあたたまっていく。|○
+  2|?{水|みず}は、あたためられたところが{上|うえ}へ{動|うご}いて、{全体|ぜんたい}があたたまる。|○
+  1|?{空気|くうき}は、あたためられると{上|うえ}の{方|ほう}へ{動|うご}く。|○
+  2|?{金|きん}ぞくのぼうは、{熱|ねっ}したところより{上|うえ}の{方|ほう}から{先|さき}にあたたまる。|×
+  1|?{試験管|しけんかん}の{水|みず}をあたためるときは、{水|みず}の{下|した}の{方|ほう}を{熱|ねっ}すると{全体|ぜんたい}が{早|はや}くあたたまる。|○
+  2|?{冬|ふゆ}、{部屋|へや}の{下|した}の{方|ほう}は{天|てん}じょうの{近|ちか}くよりあたたかい。|×
+  1|?アルコールランプの{火|ひ}を{消|け}すときは、ふたをかぶせる。|○
+  `,
+    "r4-11": `
+  1|?{水|みず}は、およそ100℃でふっとうする。|○
+  2|?{水|みず}は、0℃でこおり{始|はじ}める。|○
+  1|?{水|みず}がこおっている{間|あいだ}、{温度|おんど}はかわらない。|○
+  2|?{水|みず}は、{温度|おんど}によって、{固体|こたい}・{液体|えきたい}・{気体|きたい}にすがたをかえる。|○
+  1|?{氷|こおり}を{熱|ねっ}しても、{水|みず}にはならない。|×
+  `,
+    // ===== 5年 =====
+    "r5-01": `
+  1|?{雲|くも}には、いろいろな{形|かたち}や{色|いろ}のものがある。|○
+  2|?{日本|にほん}{付近|ふきん}では、{雲|くも}はおよそ{西|にし}から{東|ひがし}へ{動|うご}く。|○
+  1|?{天気|てんき}は、{雲|くも}のようすとは{関係|かんけい}がない。|×
+  2|?{西|にし}の{空|そら}が{晴|は}れていると、{次|つぎ}の{日|ひ}は{晴|は}れることが{多|おお}い。|○
+  1|?{雲|くも}の{量|りょう}が{多|おお}くなると、{晴|は}れになりやすい。|×
+  2|?{気象|きしょう}{衛星|えいせい}の{雲|くも}{画像|がぞう}を{見|み}ると、{雲|くも}の{動|うご}きがわかる。|○
+  `,
+    "r5-02": `
+  1|?たねが{発芽|はつが}するには、{水|みず}・{空気|くうき}・{適当|てきとう}な{温度|おんど}が{必要|ひつよう}である。|○
+  2|?インゲンマメの{子葉|しよう}には、でんぷんがふくまれている。|○
+  1|?{植物|しょくぶつ}がよく{成長|せいちょう}するには、{日光|にっこう}と{肥料|ひりょう}が{必要|ひつよう}である。|○
+  2|?{発芽|はつが}したあとのインゲンマメの{子葉|しよう}は、でんぷんがふえている。|×
+  1|?{水|みず}にしずめたたねは、{空気|くうき}がないので{発芽|はつが}しない。|○
+  `,
+    "r5-03": `
+  1|?メダカのたまごは、{受精|じゅせい}しないと{育|そだ}たない。|○
+  2|?メダカのおすは、せびれに{切|き}れこみがある。|○
+  1|?メダカのめすは、しりびれが{平行四辺形|へいこうしへんけい}に{近|ちか}い{形|かたち}をしている。|×
+  2|?{生|う}まれたばかりのメダカは、しばらくはらのふくろの{養分|ようぶん}で{育|そだ}つ。|○
+  1|?メダカの{水|みず}そうは、{直|なお}せつ{日光|にっこう}の{当|あ}たらない{明|あか}るい{所|ところ}におく。|○
+  `,
+    "r5-04": `
+  1|?アサガオのめしべの{先|さき}に{花粉|かふん}がつくと、{実|み}ができる。|○
+  2|?ヘチマには、お{花|はな}とめ{花|はな}がある。|○
+  1|?{花粉|かふん}は、おしべの{先|さき}でつくられる。|○
+  2|?{受粉|じゅふん}したあと、めしべのもとがふくらんで{実|じつ}になる。|○
+  1|?ヘチマの{花粉|かふん}は、こん{虫|ちゅう}などに{運|はこ}ばれる。|○
+  `,
+    "r5-05": `
+  1|?{台風|たいふう}は、{日本|にほん}の{南|みなみ}の{海上|かいじょう}で{発生|はっせい}する。|○
+  2|?{台風|たいふう}は、{夏|なつ}から{秋|あき}にかけて{日本|にほん}に{近|ちか}づくことが{多|おお}い。|○
+  1|?{台風|たいふう}が{近|ちか}づくと、{雨|あめ}や{風|かぜ}が{強|つよ}くなる。|○
+  2|?{台風|たいふう}の{雲|くも}は、うずをまいている。|○
+  1|?{台風|たいふう}による{大雨|おおあめ}で、こう{水|みず}が{起|お}こることがある。|○
+  2|?{台風|たいふう}の{動|うご}きは、{天気|てんき}{予報|よほう}で{調|しら}べることができる。|○
+  1|?{台風|たいふう}は、ふつう{北|きた}から{南|みなみ}へ{進|すす}む。|×
+  `,
+    "r5-06": `
+  1|?{流|なが}れが{速|はや}いところほど、{地面|じめん}を{大|おお}きくけずる。|○
+  2|?{川|かわ}の{曲|ま}がっているところの{外|そと}がわは、{流|なが}れが{速|はや}い。|○
+  1|?{上流|じょうりゅう}の{石|いし}は、{下流|かりゅう}の{石|いし}より{大|おお}きく、{角|かく}ばっている。|○
+  2|?{川|かわ}の{曲|ま}がっているところの{内|うち}がわには、すなや{石|いし}がつもりやすい。|○
+  `,
+    "r5-07": `
+  1|?ものが{水|みず}にとけると、{目|め}に{見|み}えなくなる。|○
+  2|?ものを{水|みず}にとかしても、{全体|ぜんたい}の{重|おも}さはかわらない。|○
+  1|?{水|みず}よう{液|えき}は、すき{通|とお}っている。|○
+  2|?ミョウバンの{水|みず}よう{液|えき}を{冷|ひ}やすと、とけていたミョウバンが{出|で}てくる。|○
+  `,
+    "r5-08": `
+  1|?{人|ひと}の{子|こ}どもは、{母親|ははおや}の{子宮|しきゅう}の{中|なか}で{育|そだ}つ。|○
+  2|?{子宮|しきゅう}の{中|なか}の{子|こ}どもは、へそのおを{通|とお}して{養分|ようぶん}をもらう。|○
+  1|?{人|ひと}の{受精卵|じゅせいらん}は、{母親|ははおや}の{体|からだ}の{外|そと}で{育|そだ}つ。|×
+  2|?たいばんで、{母親|ははおや}の{体|からだ}から{養分|ようぶん}などをうけとる。|○
+  `,
+    "r5-09": `
+  1|?{電磁石|でんじしゃく}は、{電流|でんりゅう}が{流|なが}れているときだけ、じしゃくのはたらきをする。|○
+  2|?コイルのまき{数|すう}をふやすと、{電磁石|でんじしゃく}の{力|ちから}は{強|つよ}くなる。|○
+  1|?{電流|でんりゅう}を{大|おお}きくすると、{電磁石|でんじしゃく}の{力|ちから}は{弱|よわ}くなる。|×
+  2|?{電磁石|でんじしゃく}にも、N {極|きょく}と S {極|きょく}がある。|○
+  `,
+    "r5-10": `
+  1|?ふりこの{長|なが}さを{長|なが}くすると、1{往復|おうふく}する{時間|じかん}は{長|なが}くなる。|○
+  2|?ふりこの1{往復|おうふく}の{時間|じかん}は、ふりこの{長|なが}さによってかわる。|○
+  1|?ふりこの{長|なが}さを{短|みじか}くすると、1{往復|おうふく}する{時間|じかん}は{長|なが}くなる。|×
+  2|?10{往復|おうふく}の{時間|じかん}をはかって10でわると、1{往復|おうふく}の{時間|じかん}を{正確|せいかく}に{求|もと}めやすい。|○
+  1|?おもりを{重|おも}くすると、ふりこは{速|はや}くふれる。|×
+  `,
+    // ===== 6年 =====
+    "r6-01": `
+  1|?ものが{燃|も}えるには、{新|あたら}しい{空気|くうき}が{必要|ひつよう}である。|○
+  2|?ろうそくが{燃|も}えると、{二酸化炭素|にさんかたんそ}ができる。|○
+  1|?{集|しゅう}{気|き}びんにふたをすると、ろうそくの{火|ひ}はずっと{燃|も}え{続|つづ}ける。|×
+  `,
+    "r6-03": `
+  1|?{根|ね}からとり{入|い}れた{水|みず}は、くきを{通|とお}って{葉|は}まで{運|はこ}ばれる。|○
+  2|?{葉|は}に{日光|にっこう}が{当|あ}たると、でんぷんができる。|○
+  1|?{植物|しょくぶつ}は、{気孔|きこう}から{水|みず}じょう{気|き}を{出|だ}している。|○
+  2|?{植物|しょくぶつ}は、{日光|にっこう}が{当|あ}たると{二酸化炭素|にさんかたんそ}を{出|だ}して{酸素|さんそ}をとり{入|い}れる。|×
+  1|?ホウセンカを{色|いろ}{水|すい}にさしておくと、くきや{葉|は}が{色|いろ}{水|すい}の{色|いろ}にそまる。|○
+  `,
+    "r6-04": `
+  1|?{動物|どうぶつ}は、{植物|しょくぶつ}やほかの{動物|どうぶつ}を{食|た}べて{養分|ようぶん}をとり{入|い}れている。|○
+  2|?{食物|しょくもつ}{連|れん}さは、{植物|しょくぶつ}から{始|はじ}まる。|○
+  1|?{植物|しょくぶつ}は、{日光|にっこう}が{当|あ}たると{酸素|さんそ}を{出|だ}す。|○
+  2|?{生|い}き{物|もの}は、{空気|くうき}を{通|とお}して、ほかの{生|い}き{物|もの}とかかわっている。|○
+  1|?{肉食|にくしょく}の{動物|どうぶつ}は、{植物|しょくぶつ}とまったくかかわりがない。|×
+  2|?{水|みず}は、{生|い}き{物|もの}の{体|からだ}の{中|なか}にふくまれていない。|×
+  `,
+    "r6-05": `
+  1|?{月|つき}は、{太陽|たいよう}の{光|ひかり}を{反射|はんしゃ}してかがやいている。|○
+  2|?{月|つき}の{形|かたち}が{日|ひ}によってかわって{見|み}えるのは、{月|つき}と{太陽|たいよう}の{位置|いち}{関係|かんけい}がかわるからである。|○
+  1|?{月|つき}の{光|ひか}っている{側|がわ}には、{太陽|たいよう}がある。|○
+  2|?{三日月|みかづき}は、{真夜中|まよなか}に{南|みなみ}の{空|そら}に{見|み}える。|×
+  1|?{満月|まんげつ}は、{夕方|ゆうがた}に{東|ひがし}の{空|そら}からのぼる。|○
+  2|?{月|つき}の{表面|ひょうめん}には、クレーターとよばれる{丸|まる}いくぼみがある。|○
+  1|?{月|つき}の{形|かたち}は、{毎日|まいにち}まったく{同|おな}じである。|×
+  `,
+    "r6-06": `
+  1|?{地層|ちそう}は、{水|みず}のはたらきでできるものと、{火山|かざん}のはたらきでできるものがある。|○
+  2|?{水|みず}のはたらきでできた{地層|ちそう}のつぶは、{丸|まる}みをおびている。|○
+  `,
+    "r6-07": `
+  1|?{地|じ}しんによって、がけがくずれることがある。|○
+  2|?{火山|かざん}のふん{火|ひ}で、{新|あたら}しい{山|やま}や{島|しま}ができることがある。|○
+  `,
+    "r6-08": `
+  1|?てこを{使|つか}うと、{小|ちい}さい{力|ちから}でものを{持|も}ち{上|あ}げることができる。|○
+  2|?{支点|してん}から{作用|さよう}{点|てん}までのきょりを{短|みじか}くすると、{小|ちい}さい{力|ちから}でものを{持|も}ち{上|あ}げられる。|○
+  1|?{実験|じっけん}{用|よう}てこは、{左右|さゆう}の「おもりの{重|おも}さ×{支点|してん}からのきょり」が{等|ひと}しいとき、{水平|すいへい}につり{合|あ}う。|○
+  `,
+    "r6-09": `
+  1|?{手回|てまわ}し{発電|はつでん}{機|き}を{回|まわ}すと、{電気|でんき}をつくることができる。|○
+  2|?コンデンサーには、{電気|でんき}をためることができる。|○
+  1|?モーターは、{電気|でんき}を{光|ひかり}にかえる{道具|どうぐ}である。|×
+  2|?{電気|でんき}は、{音|おと}や{運動|うんどう}にかえることもできる。|○
+  1|?{光電池|こうでんち}に{光|ひかり}を{当|あ}てると、{電気|でんき}をつくることができる。|○
+  2|?{電熱|でんねつ}{線|せん}は、{電気|でんき}を{熱|ねつ}にかえる。|○
+  `,
+    "r6-10": `
+  1|?{塩酸|えんさん}は、{青色|あおいろ}リトマス{紙|し}を{赤色|あかいろ}にかえる。|○
+  2|?{石灰|せっかい}{水|すい}は、アルカリ{性|せい}の{水|みず}よう{液|えき}である。|○
+  1|?{食塩|しょくえん}{水|すい}は、{中性|ちゅうせい}の{水|みず}よう{液|えき}である。|○
+  2|?{塩酸|えんさん}にアルミニウムを{入|い}れると、あわを{出|だ}してとける。|○
+  1|?{炭酸|たんさん}{水|すい}を{熱|ねっ}して{水|みず}をじょう{発|はっ}させると、{白|しろ}いつぶが{残|のこ}る。|×
+  2|?アンモニア{水|すい}は、{赤色|あかいろ}リトマス{紙|し}を{青色|あおいろ}にかえる。|○
+  `,
+    "r6-11": `
+  1|?{人|ひと}は、{空気|くうき}・{水|みず}・{食|た}べ{物|もの}を{通|とお}して、{環境|かんきょう}とかかわっている。|○
+  2|?{石油|せきゆ}や{石炭|せきたん}は、{使|つか}ってもすぐにまたつくられる。|×
+  1|?{太陽光|たいようこう}や{風力|ふうりょく}を{使|つか}った{発電|はつでん}は、{二酸化炭素|にさんかたんそ}をほとんど{出|だ}さない。|○
+  2|?よごれた{水|みず}をそのまま{川|かわ}に{流|なが}しても、{環境|かんきょう}には{関係|かんけい}がない。|×
+  1|?{電気|でんき}を{大切|たいせつ}に{使|つか}うことは、{環境|かんきょう}をまもることにつながる。|○
+  `,
+    // ===== 中1 =====
+    "k1-01": `
+  1|?ルーペは、{目|め}に{近|ちか}づけて{持|も}ち、{観察|かんさつ}するものを{前後|ぜんご}に{動|うご}かしてピントを{合|あ}わせる。|○
+  2|?{顕微鏡|けんびきょう}のピントを{合|あ}わせるときは、{対物|たいぶつ}レンズとプレパラートを{近|ちか}づけながら{合|あ}わせる。|×
+  1|?{顕微鏡|けんびきょう}は、{直射|ちょくしゃ}{日光|にっこう}の{当|あ}たらない{明|あか}るい{場所|ばしょ}で{使|つか}う。|○
+  2|?{生物|せいぶつ}を{分類|ぶんるい}するときは、{共通|きょうつう}する{特徴|とくちょう}に{注目|ちゅうもく}して{分|わ}ける。|○
+  1|?{顕微鏡|けんびきょう}のレンズは、{対物|たいぶつ}レンズを{先|さき}につける。|×
+  `,
+    "k1-04": `
+  1|?{金属|きんぞく}は、みがくと{特有|とくゆう}の{光沢|こうたく}が{出|で}る。|○
+  2|?{金属|きんぞく}は、{電気|でんき}や{熱|ねつ}をよく{通|とお}す。|○
+  1|?{密度|みつど}は、{物質|ぶっしつ}1cm³あたりの{質量|しつりょう}である。|○
+  2|?{砂糖|さとう}や{食塩|しょくえん}は{有機物|ゆうきぶつ}である。|×
+  `,
+    "k1-06": `
+  1|?{水溶液|すいようえき}は、{透明|とうめい}である。|○
+  2|?ろ{過|か}では、ろ{紙|し}を{通|とお}りぬけた{液|えき}をろ{液|えき}という。|○
+  `,
+    "k1-07": `
+  1|?{物質|ぶっしつ}が{状態|じょうたい}{変化|へんか}しても、{質量|しつりょう}は{変|か}わらない。|○
+  2|?ふつう、{物質|ぶっしつ}が{液体|えきたい}から{固体|こたい}になると{体積|たいせき}は{小|ちい}さくなる。|○
+  1|?エタノールの{沸点|ふってん}は、{水|みず}の{沸点|ふってん}より{低|ひく}い。|○
+  2|?{純粋|じゅんすい}な{物質|ぶっしつ}がとけている{間|あいだ}、{温度|おんど}は{上|あ}がり{続|つづ}ける。|×
+  `,
+    "k1-09": `
+  1|?{音|おと}は、{空気|くうき}{中|ちゅう}を{波|なみ}として{伝|つた}わる。|○
+  2|?{振幅|しんぷく}が{大|おお}きいほど、{音|おと}は{大|おお}きくなる。|○
+  1|?{振動|しんどう}{数|すう}が{多|おお}いほど、{音|おと}は{低|ひく}くなる。|×
+  `,
+    "k1-10": `
+  1|?ばねののびは、ばねを{引|ひ}く{力|ちから}の{大|おお}きさに{比例|ひれい}する。|○
+  2|?{力|ちから}の{矢印|やじるし}では、{矢印|やじるし}の{長|なが}さで{力|ちから}の{大|おお}きさを{表|あらわ}す。|○
+  1|?{質量|しつりょう}1kgの{物体|ぶったい}にはたらく{重力|じゅうりょく}の{大|おお}きさは、およそ10Nである。|○
+  2|?2{力|りょく}がつり{合|あ}うとき、2{力|りょく}の{大|おお}きさは{等|ひと}しく、{向|む}きは{反対|はんたい}で、{一直線|いっちょくせん}{上|じょう}にある。|○
+  1|?{磁力|じりょく}は、{離|はな}れていてもはたらく{力|ちから}である。|○
+  2|?{地球|ちきゅう}{上|じょう}で{質量|しつりょう}100gの{物体|ぶったい}にはたらく{重力|じゅうりょく}は、およそ100Nである。|×
+  2|?{月面|げつめん}{上|じょう}では、{物体|ぶったい}にはたらく{重力|じゅうりょく}は{地球|ちきゅう}{上|じょう}の{約|やく}6{分|ぶん}の1になる。|○
+  `,
+    // ===== 中2 =====
+    "k2-02": `
+  1|?{鉄|てつ}と{硫黄|いおう}が{反応|はんのう}すると、{硫化|りゅうか}{鉄|てつ}ができる。|○
+  `,
+    "k2-03": `
+  1|?{化学|かがく}{変化|へんか}の{前後|ぜんご}で、{物質|ぶっしつ}{全体|ぜんたい}の{質量|しつりょう}は{変|か}わらない。|○
+  2|?{銅|どう}を{加熱|かねつ}すると、{酸素|さんそ}と{結|むす}びついて{質量|しつりょう}が{大|おお}きくなる。|○
+  1|?{銅|どう}と{酸素|さんそ}は、{決|き}まった{質量|しつりょう}の{比|ひ}で{結|むす}びつく。|○
+  2|?マグネシウムを{加熱|かねつ}すると、{質量|しつりょう}は{小|ちい}さくなる。|×
+  1|?{密閉|みっぺい}した{容器|ようき}の{中|なか}で{気体|きたい}が{発生|はっせい}する{反応|はんのう}を{行|おこな}っても、{全体|ぜんたい}の{質量|しつりょう}は{変|か}わらない。|○
+  2|?{銅|どう}と{酸素|さんそ}が{結|むす}びつくときの{質量|しつりょう}の{比|ひ}は、およそ4:1である。|○
+  1|?{金属|きんぞく}の{量|りょう}がふえても、{結|むす}びつく{酸素|さんそ}の{質量|しつりょう}は{変|か}わらない。|×
+  2|?うすい{硫酸|りゅうさん}とうすい{水酸化|すいさんか}バリウム{水溶液|すいようえき}を{混|ま}ぜると、{白|しろ}い{沈殿|ちんでん}ができる。|○
+  `,
+    "k2-09": `
+  1|?{湿度|しつど}は、{乾湿|かんしつ}{計|けい}を{使|つか}って{調|しら}べることができる。|○
+  2|?{空気|くうき}が{上昇|じょうしょう}すると、{膨張|ぼうちょう}して{温度|おんど}が{下|さ}がる。|○
+  1|?{気温|きおん}が{露点|ろてん}より{下|さ}がると、{水蒸気|すいじょうき}が{水滴|すいてき}になる。|○
+  2|?{雲|くも}は、{水蒸気|すいじょうき}そのものが{集|あつ}まって{見|み}えているものである。|×
+  1|?{同|おな}じ{水蒸気|すいじょうき}{量|りょう}なら、{気温|きおん}が{高|たか}いほど{湿度|しつど}は{高|たか}い。|×
+  `,
+    "k2-11": `
+  1|?{並列|へいれつ}{回路|かいろ}では、{各|かく}{部分|ぶぶん}に{加|くわ}わる{電圧|でんあつ}の{大|おお}きさは{等|ひと}しい。|○
+  2|?{電流|でんりゅう}{計|けい}は、はかりたい{部分|ぶぶん}に{並列|へいれつ}につなぐ。|×
+  1|?{抵抗|ていこう}に{流|なが}れる{電流|でんりゅう}の{大|おお}きさは、{加|くわ}える{電圧|でんあつ}に{比例|ひれい}する。|○
+  `,
+    "k2-12": `
+  1|?{電力|でんりょく}は、{電圧|でんあつ}×{電流|でんりゅう}で{求|もと}められる。|○
+  2|?{電熱|でんねつ}{線|せん}で{発生|はっせい}する{熱量|ねつりょう}は、{電流|でんりゅう}を{流|なが}す{時間|じかん}に{比例|ひれい}する。|○
+  `,
+    "k2-13": `
+  1|?{電流|でんりゅう}が{流|なが}れる{導線|どうせん}のまわりには、{磁界|じかい}ができる。|○
+  `,
+    "k2-14": `
+  1|?{異|こと}なる{種類|しゅるい}の{電気|でんき}どうしは、{引|ひ}き{合|あ}う。|○
+  2|?{電流|でんりゅう}の{正体|しょうたい}は、{電子|でんし}の{流|なが}れである。|○
+  1|?{放射線|ほうしゃせん}には、{物体|ぶったい}を{通|とお}りぬける{性質|せいしつ}がある。|○
+  `,
+    // ===== 中3 =====
+    "k3-01": `
+  1|?{塩化|えんか}ナトリウムは{電解|でんかい}{質|しつ}である。|○
+  `,
+    "k3-02": `
+  1|?ダニエル{電池|でんち}では、{亜鉛|あえん}{板|ばん}が−{極|きょく}になる。|○
+  2|?{電池|でんち}は、{化学|かがく}エネルギーを{電気|でんき}エネルギーに{変|か}える{装置|そうち}である。|○
+  1|?マグネシウムは、{銅|どう}よりイオンになりやすい。|○
+  2|?ダニエル{電池|でんち}の{銅板|どうばん}では、{銅|どう}が{溶|と}け{出|だ}す。|×
+  `,
+    "k3-03": `
+  1|?アルカリ{性|せい}の{水溶液|すいようえき}には、{水酸化物|すいさんかぶつ}イオンがふくまれている。|○
+  2|?{中和|ちゅうわ}では、{水素|すいそ}イオンと{水酸化物|すいさんかぶつ}イオンが{結|むす}びついて{水|みず}ができる。|○
+  1|?{酸性|さんせい}の{水溶液|すいようえき}は、BTB{溶液|ようえき}を{青色|あおいろ}にする。|×
+  2|?{中和|ちゅうわ}では、{水|みず}といっしょに{塩|しお}ができる。|○
+  1|?フェノールフタレイン{溶液|ようえき}は、アルカリ{性|せい}で{赤色|あかいろ}になる。|○
+  2|?pHが7のとき、{水溶液|すいようえき}は{中性|ちゅうせい}である。|○
+  `,
+    "k3-05": `
+  1|?{遺伝子|いでんし}は、{細胞|さいぼう}の{核|かく}の{中|なか}の{染色|せんしょく}{体|たい}にある。|○
+  2|?{減数|げんすう}{分裂|ぶんれつ}では、{染色|せんしょく}{体|たい}の{数|かず}が{半分|はんぶん}になる。|○
+  1|?{親|おや}の{形質|けいしつ}が{子|こ}に{伝|つた}わることを{遺伝|いでん}という。|○
+  2|?{無性|むせい}{生殖|せいしょく}では、{子|こ}は{親|おや}と{同|おな}じ{形質|けいしつ}をもつ。|○
+  `,
+    "k3-06": `
+  1|?{生物|せいぶつ}が{長|なが}い{年月|としつき}をかけて{変化|へんか}することを{進化|しんか}という。|○
+  2|?{始祖|しそ}{鳥|とり}は、は{虫類|ちゅうるい}と{鳥類|ちょうるい}の{両方|りょうほう}の{特徴|とくちょう}をもつ。|○
+  1|?ヒトのうでとクジラのひれは、もとは{同|おな}じ{器官|きかん}だったと{考|かんが}えられる。|○
+  2|?{両生類|りょうせいるい}は、{魚類|ぎょるい}より{前|まえ}に{地球|ちきゅう}{上|じょう}に{現|あらわ}れた。|×
+  1|?{鳥類|ちょうるい}は、は{虫類|ちゅうるい}から{進化|しんか}したと{考|かんが}えられている。|○
+  2|?{脊椎動物|せきついどうぶつ}は、{水中|すいちゅう}から{陸上|りくじょう}へと{生活|せいかつ}の{場|ば}を{広|ひろ}げた。|○
+  `,
+    "k3-07": `
+  1|?{水圧|すいあつ}は、{深|ふか}いところほど{大|おお}きい。|○
+  2|?{水圧|すいあつ}は、あらゆる{向|む}きからはたらく。|○
+  1|?{浮力|ふりょく}の{大|おお}きさは、{空気|くうき}{中|ちゅう}での{重|おも}さと{水中|すいちゅう}での{重|おも}さの{差|さ}で{求|もと}められる。|○
+  2|?2{力|りょく}の{合力|ごうりょく}は、2{力|りょく}を2{辺|へん}とする{平行四辺形|へいこうしへんけい}の{対角線|たいかくせん}で{表|あらわ}される。|○
+  1|?{物体|ぶったい}が{水|みず}に{浮|う}いているとき、{浮力|ふりょく}は{重力|じゅうりょく}より{小|ちい}さい。|×
+  2|?1つの{力|ちから}を2つの{力|ちから}に{分|わ}けることを、{力|ちから}の{分解|ぶんかい}という。|○
+  `,
+    "k3-08": `
+  1|?{物体|ぶったい}に{力|ちから}がはたらかないとき、{静止|せいし}している{物体|ぶったい}は{静止|せいし}し{続|つづ}ける。|○
+  2|?{斜面|しゃめん}の{角度|かくど}を{大|おお}きくすると、{台車|だいしゃ}の{速|はや}さのふえ{方|かた}は{大|おお}きくなる。|○
+  1|?{速|はや}さは、{移動|いどう}した{距離|きょり}÷かかった{時間|じかん}で{求|もと}められる。|○
+  2|?{運動|うんどう}している{物体|ぶったい}は、{力|ちから}がはたらかなければやがて{止|と}まる。|×
+  1|?{物体|ぶったい}がもっている、{運動|うんどう}の{状態|じょうたい}を{続|つづ}けようとする{性質|せいしつ}を{慣性|かんせい}という。|○
+  `,
+    "k3-09": `
+  1|?{仕事|しごと}の{大|おお}きさは、{力|ちから}の{大|おお}きさ×{力|ちから}の{向|む}きに{動|うご}いた{距離|きょり}で{求|もと}められる。|○
+  `,
+    "k3-10": `
+  1|?{太陽|たいよう}は、{東|ひがし}の{空|そら}からのぼり、{南|みなみ}の{空|そら}を{通|とお}って{西|にし}の{空|そら}にしずむ。|○
+  `,
+    "k3-13": `
+  1|?{生産|せいさん}{者|しゃ}は、{光合成|こうごうせい}で{有機物|ゆうきぶつ}をつくる。|○
+  2|?{分解|ぶんかい}{者|しゃ}は、{有機物|ゆうきぶつ}を{二酸化炭素|にさんかたんそ}や{水|みず}などの{無機物|むきぶつ}に{分解|ぶんかい}する。|○
+  1|?ある{生物|せいぶつ}の{数|かず}が{一時|いちじ}{的|てき}にふえても、やがてもとのつり{合|あ}いにもどることが{多|おお}い。|○
+  `,
+    "k3-14": `
+  1|?{化石|かせき}{燃料|ねんりょう}には、かぎりがある。|○
+  2|?{太陽光|たいようこう}{発電|はつでん}は、{天気|てんき}によって{発電|はつでん}{量|りょう}が{変|か}わる。|○
+  1|?{水力|すいりょく}{発電|はつでん}は、{水|みず}の{位置|いち}エネルギーを{利用|りよう}している。|○
+  2|?プラスチックは、すべて{自然|しぜん}の{中|なか}ですぐに{分解|ぶんかい}される。|×
+  1|?{再生|さいせい}{可能|かのう}エネルギーは、{使|つか}ってもなくならない。|○
+  `
+  };
+
+  // add/rorder
+  // このファイルは tools/rika/annotate.js が content/rorder.js から作ったもの。直すときは content/rorder.js を直して作りなおす。
+  // 教科書会社ごとの単元のじゅんばん(3年〜中3)。メニューの「教科書」でえらぶと、単元をこの順にならべかえる
+  // 数字は単元の番号(r3-01 → 01)。書いていない単元は、さいごに ふつうの順でならぶ
+  // 単元の分け方は教科書とちがうところがあるので、おおよその順(季節の単元は、はじめに出てくるところに入れた)
+  // しらべたもの:各社の教科書の目次・年間指導計画(令和6年度版の小学校、令和3年度版の中学校)
+  var rorder = [];
+  var PUB_ORDER = (() => {
+    const P = {
+      tokyo: ["{東京書籍|とうきょうしょせき}", {
+        3: "01 02 03 04 05 06 07 08 09 10 11",
+        4: "01 08 02 03 04 05 06 07 09 10 11",
+        5: "01 02 03 04 05 06 07 08 09 10",
+        6: "01 02 03 04 05 06 07 08 09 10 11",
+        7: "01 02 03 04 05 06 07 08 09 10 11 12 13",
+        8: "01 02 03 04 05 06 07 08 09 10 14 11 12 13",
+        9: "01 02 03 04 05 06 07 08 09 10 11 12 13 14"
+      }],
+      keirin: ["{啓|けい}{林|りん}{館|かん}", {
+        3: "01 02 03 04 05 06 07 10 11 08 09",
+        4: "01 02 04 03 05 07 08 09 10 11 06",
+        5: "01 02 03 05 04 08 06 10 07 09",
+        6: "01 02 03 04 10 05 06 07 08 09 11",
+        7: "01 02 03 11 12 13 04 05 06 07 08 09 10",
+        8: "04 05 06 07 08 09 10 01 02 03 11 12 13 14",
+        9: "04 05 06 10 11 12 01 02 03 07 08 09 13 14"
+      }],
+      dainippon: ["{大|だい}{日本|にほん}{図書|としょ}", {
+        3: "01 02 03 05 04 08 06 07 10 11 09",
+        4: "01 02 03 07 05 04 06 08 09 10 11",
+        5: "01 02 03 05 04 06 07 10 09 08",
+        6: "01 03 02 04 05 10 06 07 08 09 11",
+        7: "01 02 03 04 05 07 06 08 09 10 11 12 13",
+        8: "01 02 03 04 05 06 07 11 12 13 14 08 09 10",
+        9: "07 08 09 04 05 06 13 01 02 03 10 11 12 14"
+      }],
+      gakuto: ["{学校|がっこう}{図書|としょ}", {
+        3: "01 02 06 03 05 08 07 04 10 11 09",
+        4: "01 02 07 03 04 05 06 11 09 10 08",
+        5: "10 02 03 04 01 05 06 09 07 08",
+        6: "01 02 03 04 08 05 06 07 10 09 11",
+        7: "01 02 03 04 05 06 07 08 09 10 11 13 12",
+        8: "01 02 03 04 05 06 07 11 12 13 14 08 09 10",
+        9: "07 08 09 04 05 06 13 01 02 03 12 10 11 14"
+      }],
+      kyoiku: ["{教育|きょういく}{出版|しゅっぱん}", {
+        3: "01 02 03 04 05 06 07 08 09 10 11",
+        4: "01 02 08 03 05 04 07 09 10 11 06",
+        5: "01 02 03 04 05 10 06 09 08 07",
+        6: "01 02 03 04 08 06 07 05 10 09 11",
+        7: "01 02 03 04 05 06 07 13 11 12 08 09 10",
+        8: "01 02 03 04 05 06 07 08 09 10 11 12 13 14",
+        9: "01 02 03 04 05 06 10 11 12 07 08 09 13 14"
+      }]
+    };
+    const pre = { 3: "r3", 4: "r4", 5: "r5", 6: "r6", 7: "k1", 8: "k2", 9: "k3" };
+    const out = {};
+    for (const [key, [name, gs]] of Object.entries(P)) {
+      out[key] = { name: RK.noRuby(name) };
+      for (const [g, s] of Object.entries(gs)) {
+        const ids = s.split(" ").map((n) => `${pre[g]}-${n}`);
+        if (new Set(ids).size !== ids.length) throw new Error(`{教科書|きょうかしょ}の{順|じゅん}に{同|おな}じ{単元|たんげん}が2{回|かい}: ${name} ${g}`);
+        out[key][g] = ids;
+      }
+    }
+    return out;
+  })();
+
   // add/rsum
   // このファイルは tools/rika/annotate.js が content/rsum.js から作ったもの。直すときは content/rsum.js を直して作りなおす。
   // 単元ごとの「まとめ」:〔ことば〕からえらぶ穴うめ・○×(ほかの無料プリントによくある形)
@@ -37305,7 +38382,11 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     };
     const grades = [typeof r1sei1Grade !== "undefined" && r1sei1Grade, typeof r2sei2Grade !== "undefined" && r2sei2Grade, r3Grade, r4Grade, r5Grade, r6Grade, r7chu1Grade, r8chu2Grade, r9chu3Grade].filter(Boolean);
     const out = [];
-    for (const [uid, src] of Object.entries(S)) {
+    // rmore.js の ○× をくわえる
+    const more = typeof rmoreTf !== "undefined" ? rmoreTf : {};
+    for (const uid of Object.keys(more)) if (!S[uid]) throw new Error("○×の{単元|たんげん}がない: " + uid);
+    for (const [uid, src0] of Object.entries(S)) {
+      const src = src0 + (more[uid] || "");
       const unit = grades.flatMap((g) => g.units).find((u) => u.id === uid);
       if (!unit) throw new Error("まとめの{単元|たんげん}がない: " + uid);
       const sei = /^s/.test(uid);
@@ -37483,7 +38564,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     prismNet_default,
     cylinderNet_default
   ];
-  list.push(...r0lib, ...r0lib2, ...r1sei, ...r3, ...r4, ...r5, ...r6, ...r7chu1, ...r8chu2, ...r9chu3, ...rsum, ...rzstage);
+  list.push(...r0lib, ...r0lib2, ...r1sei, ...r3, ...r4, ...r5, ...r6, ...r7chu1, ...r8chu2, ...r9chu3, ...rfig, ...rmore, ...rorder, ...rsum, ...rzstage);
   var generators = Object.fromEntries(list.map((g3) => [g3.id, g3]));
   function getGenerator(id) {
     const g3 = generators[id];
@@ -43976,6 +45057,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
           for (const tp of list) topics.push(withLevels({ ...tp }, lv2));
           if (!no && su.from.length === 1 && src.per) props = { per: src.per, starts: src.starts, defaultCount: src.defaultCount };
           else if (!no && su.from.length === 1 && src.starts) props = { starts: src.starts };
+          if (!no && su.from.length === 1 && src.testPlan) props = { ...props, testPlan: src.testPlan };
         }
         const nm = noRuby(su.name);
         return { id: `s${st.key}-${String(i + 1).padStart(2, "0")}`, order: i + 1, name: nm, ...nm !== su.name ? { rubyName: su.name } : {}, domain: noRuby(su.domain), topics, ...props, ...su.unitProps || {} };
@@ -44026,6 +45108,31 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
   }
   var gradeName = gradeNameOf;
   var GRADE_KEYS = Object.keys(GRADES).map(Number).sort((a, b) => a - b);
+  // 教科書会社の順(content/rorder.js の PUB_ORDER)。3年〜中3 の単元をならべかえ、番号もつけなおす
+  var PUB_KEYS = typeof PUB_ORDER !== "undefined" ? Object.keys(PUB_ORDER) : [];
+  var BASE_ORDER = {};
+  for (const g3 of GRADE_KEYS) if (g3 >= 3 && g3 <= 9) BASE_ORDER[g3] = GRADES[g3].units.map((u2) => u2.id);
+  function applyPub(key) {
+    for (const g3 of Object.keys(BASE_ORDER)) {
+      const base = BASE_ORDER[g3], list = key && PUB_ORDER[key] && PUB_ORDER[key][g3] || base;
+      const rank = (id) => {
+        const i = list.indexOf(id);
+        return i >= 0 ? i : 1e3 + base.indexOf(id);
+      };
+      GRADES[g3].units.sort((a, b) => rank(a.id) - rank(b.id));
+      let n = 0;
+      for (const u2 of GRADES[g3].units) if (!u2.numberless) u2.order = ++n;
+    }
+  }
+  var homePub = (() => {
+    try {
+      const v = localStorage.getItem("rika-print:pub");
+      return PUB_KEYS.includes(v) ? v : "";
+    } catch {
+      return "";
+    }
+  })();
+  applyPub(homePub);
   function refreshGrades() {
     fill2(el.grade, GRADE_KEYS.map((g3) => ({ value: g3, label: gradeName(g3), disabled: !GRADES[g3] })));
     refreshUnits();
@@ -44580,6 +45687,9 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     // くらしの数学:まとめの PDF(62ページ・答えつき)をひらくリンク
     const pdf = stageMode && GRADES[homeGrade]?.pdf;
     if (pdf) $("homeAges").insertAdjacentHTML("beforeend", `<a class="home-pdf" href="${esc2(pdf.href)}" target="_blank" rel="noopener">📄 ${esc2(pdf.label)}</a>`);
+    // 教科書の順(3年〜中3 だけ)
+    $("homePubWrap").hidden = stageMode || homeGrade < 3 || homeGrade > 9 || !PUB_KEYS.length;
+    $("homePub").innerHTML = `<option value="">ふつうの順</option>` + PUB_KEYS.map((k) => `<option value="${k}"${k === homePub ? " selected" : ""}>${esc2(PUB_ORDER[k].name)}</option>`).join("");
     $("homeLevels").innerHTML = Object.entries(LEVELS).map(([k, v]) => `<button type="button" class="hl${k === homeLevel ? " on" : ""}" data-level="${k}" aria-pressed="${k === homeLevel}">${v.label}</button>`).join("");
     const units = GRADES[homeGrade]?.units ?? [];
     $("homeUnitsTitle").textContent = homeGrade === 0 ? "ようじの プリント" : stageMode ? `${gradeName(homeGrade)}の内容` : `${gradeName(homeGrade)}の単元`;
@@ -44640,6 +45750,15 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
       mascot("maru", "OK！<br>プリントを 作るよ");
       openPrint(b.dataset.unit, b.dataset.kind, Number(b.dataset.sub) || 0);
     }
+  });
+  $("homePub").addEventListener("change", (e) => {
+    homePub = PUB_KEYS.includes(e.target.value) ? e.target.value : "";
+    try {
+      localStorage.setItem("rika-print:pub", homePub);
+    } catch {}
+    applyPub(homePub);
+    renderHome();
+    mascot("idea", homePub ? `${esc2(PUB_ORDER[homePub].name)}の<br>じゅんばんに したよ` : "ふつうの<br>じゅんばんに したよ");
   });
   // 特別支援の段階 ⇔ 学年べつ の切りかえ(さいごにえらんだものをおぼえておく)
   $("tkBanner").addEventListener("click", () => {

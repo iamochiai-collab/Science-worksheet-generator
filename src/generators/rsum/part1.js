@@ -547,7 +547,11 @@ var rsum = (() => {
   };
   const grades = [typeof r1sei1Grade !== "undefined" && r1sei1Grade, typeof r2sei2Grade !== "undefined" && r2sei2Grade, r3Grade, r4Grade, r5Grade, r6Grade, r7chu1Grade, r8chu2Grade, r9chu3Grade].filter(Boolean);
   const out = [];
-  for (const [uid, src] of Object.entries(S)) {
+  // rmore.js の ○× をくわえる
+  const more = typeof rmoreTf !== "undefined" ? rmoreTf : {};
+  for (const uid of Object.keys(more)) if (!S[uid]) throw new Error("○×の{単元|たんげん}がない: " + uid);
+  for (const [uid, src0] of Object.entries(S)) {
+    const src = src0 + (more[uid] || "");
     const unit = grades.flatMap((g) => g.units).find((u) => u.id === uid);
     if (!unit) throw new Error("まとめの{単元|たんげん}がない: " + uid);
     const sei = /^s/.test(uid);

@@ -175,6 +175,8 @@ body[data-view="print"] .home { display: none; }
 .hg { font: inherit; font-size: 26px; font-weight: bold; line-height: 1.2; padding: 8px 0; border-radius: 12px; border: 2px solid var(--gc); background: #fff; color: var(--gc); cursor: pointer; }
 .hg small { font-size: 14px; margin-left: 1px; }
 .hg.on { background: var(--gc); color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.18); }
+.home-pub { font: inherit; font-size: 15px; padding: 7px 10px; border: 1.5px solid #2b3a55; border-radius: 10px; background: #fff; color: #2b3a55; min-width: 12em; }
+.home-pub-note { font-size: 12px; color: #667; margin-top: 4px; }
 .home-levels { display: inline-flex; border: 1.5px solid #2b3a55; border-radius: 10px; overflow: hidden; background: #fff; }
 .hl { font: inherit; font-size: 17px; letter-spacing: 2px; padding: 9px 18px; color: #c9a227 !important; border: 0; background: #fff; color: #2b3a55; cursor: pointer; }
 .hl + .hl { border-left: 1.5px solid #2b3a55; }
@@ -569,12 +571,13 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     <div class="home-main">
   <div class="home-hero">
     <h1>理科プリント<span class="version" id="versionHome"></span></h1>
-    <p>小学校1・2年(生活科) ・ 小学校3〜6年の理科 ・ 中学1〜3年の理科。単元は教科書でよくある順にならべています。学年をえらんで、単元のボタンをおすとプリントができます。</p>
+    <p>小学校1・2年(生活科) ・ 小学校3〜6年の理科 ・ 中学1〜3年の理科。単元は教科書でよくある順にならべています(「教科書の順」で、教科書会社の順にもできます)。学年をえらんで、単元のボタンをおすとプリントができます。</p>
   </div>
   <button type="button" class="tk-banner" id="tkBanner"></button>
   <div class="home-row">
     <div><div class="home-step"><span class="n">1</span><span id="homeStep1">学年</span></div><div class="home-grades" id="homeGrades"></div></div>
     <div><div class="home-step"><span class="n">2</span>難易度</div><div class="home-levels" id="homeLevels"></div><div class="home-ages" id="homeAges"></div></div>
+    <div id="homePubWrap"><div class="home-step"><span class="n">3</span>教科書の順</div><select id="homePub" class="home-pub" aria-label="教科書の順"></select><div class="home-pub-note">単元を、教科書会社の順にならべかえます(おおよその順です)</div></div>
   </div>
     </div>
     <div class="home-mascot" aria-hidden="true"><div class="bubble" id="mascotSay">こんにちは！<br>学年と むずかしさを<br>えらんでね</div><div class="chara chara-guide" id="mascot"></div></div>
@@ -39449,6 +39452,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
           for (const tp of list) topics.push(withLevels({ ...tp }, lv2));
           if (!no && su.from.length === 1 && src.per) props = { per: src.per, starts: src.starts, defaultCount: src.defaultCount };
           else if (!no && su.from.length === 1 && src.starts) props = { starts: src.starts };
+          if (!no && su.from.length === 1 && src.testPlan) props = { ...props, testPlan: src.testPlan };
         }
         const nm = noRuby(su.name);
         return { id: `s${st.key}-${String(i + 1).padStart(2, "0")}`, order: i + 1, name: nm, ...nm !== su.name ? { rubyName: su.name } : {}, domain: noRuby(su.domain), topics, ...props, ...su.unitProps || {} };
@@ -39499,6 +39503,31 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
   }
   var gradeName = gradeNameOf;
   var GRADE_KEYS = Object.keys(GRADES).map(Number).sort((a, b) => a - b);
+  // 教科書会社の順(content/rorder.js の PUB_ORDER)。3年〜中3 の単元をならべかえ、番号もつけなおす
+  var PUB_KEYS = typeof PUB_ORDER !== "undefined" ? Object.keys(PUB_ORDER) : [];
+  var BASE_ORDER = {};
+  for (const g3 of GRADE_KEYS) if (g3 >= 3 && g3 <= 9) BASE_ORDER[g3] = GRADES[g3].units.map((u2) => u2.id);
+  function applyPub(key) {
+    for (const g3 of Object.keys(BASE_ORDER)) {
+      const base = BASE_ORDER[g3], list = key && PUB_ORDER[key] && PUB_ORDER[key][g3] || base;
+      const rank = (id) => {
+        const i = list.indexOf(id);
+        return i >= 0 ? i : 1e3 + base.indexOf(id);
+      };
+      GRADES[g3].units.sort((a, b) => rank(a.id) - rank(b.id));
+      let n = 0;
+      for (const u2 of GRADES[g3].units) if (!u2.numberless) u2.order = ++n;
+    }
+  }
+  var homePub = (() => {
+    try {
+      const v = localStorage.getItem("rika-print:pub");
+      return PUB_KEYS.includes(v) ? v : "";
+    } catch {
+      return "";
+    }
+  })();
+  applyPub(homePub);
   function refreshGrades() {
     fill2(el.grade, GRADE_KEYS.map((g3) => ({ value: g3, label: gradeName(g3), disabled: !GRADES[g3] })));
     refreshUnits();
@@ -40053,6 +40082,9 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
     // くらしの数学:まとめの PDF(62ページ・答えつき)をひらくリンク
     const pdf = stageMode && GRADES[homeGrade]?.pdf;
     if (pdf) $("homeAges").insertAdjacentHTML("beforeend", `<a class="home-pdf" href="${esc2(pdf.href)}" target="_blank" rel="noopener">📄 ${esc2(pdf.label)}</a>`);
+    // 教科書の順(3年〜中3 だけ)
+    $("homePubWrap").hidden = stageMode || homeGrade < 3 || homeGrade > 9 || !PUB_KEYS.length;
+    $("homePub").innerHTML = `<option value="">ふつうの順</option>` + PUB_KEYS.map((k) => `<option value="${k}"${k === homePub ? " selected" : ""}>${esc2(PUB_ORDER[k].name)}</option>`).join("");
     $("homeLevels").innerHTML = Object.entries(LEVELS).map(([k, v]) => `<button type="button" class="hl${k === homeLevel ? " on" : ""}" data-level="${k}" aria-pressed="${k === homeLevel}">${v.label}</button>`).join("");
     const units = GRADES[homeGrade]?.units ?? [];
     $("homeUnitsTitle").textContent = homeGrade === 0 ? "ようじの プリント" : stageMode ? `${gradeName(homeGrade)}の内容` : `${gradeName(homeGrade)}の単元`;
@@ -40113,6 +40145,15 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
       mascot("maru", "OK！<br>プリントを 作るよ");
       openPrint(b.dataset.unit, b.dataset.kind, Number(b.dataset.sub) || 0);
     }
+  });
+  $("homePub").addEventListener("change", (e) => {
+    homePub = PUB_KEYS.includes(e.target.value) ? e.target.value : "";
+    try {
+      localStorage.setItem("rika-print:pub", homePub);
+    } catch {}
+    applyPub(homePub);
+    renderHome();
+    mascot("idea", homePub ? `${esc2(PUB_ORDER[homePub].name)}の<br>じゅんばんに したよ` : "ふつうの<br>じゅんばんに したよ");
   });
   // 特別支援の段階 ⇔ 学年べつ の切りかえ(さいごにえらんだものをおぼえておく)
   $("tkBanner").addEventListener("click", () => {
