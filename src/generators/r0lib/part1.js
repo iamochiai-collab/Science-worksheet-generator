@@ -91,23 +91,30 @@ var RK = (() => {
 
   // ===== イラスト(絵文字)=====
   // 小学校・生活科の問題には、問いの中のことばから絵をえらんで、問題のよこに出す(答えのことばからはえらばない)
+  // イラスト(assets/pic・assets/fig)。build で 名前 → [data URI, はば, 高さ] が入る
+  const PIC_SRC = /*PICMAP*/{};
+  const picSrc = (n) => (PIC_SRC[n] || [])[0] || "";
+  // 図の中に絵を入れる部品(x, y, はば, 高さ は mm)
+  const img = (n, x, y, w, h) => ({ t: "image", href: picSrc(n), x, y, w, h });
+  // 問題のよこの絵:問いのことばに合わせてえらぶ(答えのことばからはえらばない)。名前がイラストにないときは絵文字
   const PICS = [
-    ["アサガオ", "🌺"], ["ヒマワリ", "🌻"], ["チューリップ", "🌷"], ["サクラ", "🌸"], ["ホウセンカ", "🌼"], ["ヘチマ", "🥒"], ["インゲンマメ", "🌱"], ["ドングリ", "🌰"], ["おちば", "🍂"], ["{落|お}ち{葉|ば}", "🍂"], ["もみじ", "🍁"],
-    ["モンシロチョウ", "🦋"], ["アゲハ", "🦋"], ["チョウ", "🦋"], ["よう{虫|むし}", "🐛"], ["さなぎ", "🐛"], ["アリ", "🐜"], ["テントウムシ", "🐞"], ["てんとうむし", "🐞"], ["バッタ", "🦗"], ["コオロギ", "🦗"], ["セミ", "🦗"], ["トンボ", "🦗"], ["カブトムシ", "🪲"], ["こん{虫|ちゅう}", "🐞"], ["クモ", "🕷️"], ["カタツムリ", "🐌"], ["ダンゴムシ", "🐛"],
-    ["メダカ", "🐟"], ["{魚|さかな}", "🐟"], ["さかな", "🐟"], ["ザリガニ", "🦞"], ["カエル", "🐸"], ["ヒキガエル", "🐸"], ["ツバメ", "🐦"], ["{鳥|とり}", "🐦"], ["ウサギ", "🐰"], ["イヌ", "🐶"], ["{犬|いぬ}", "🐶"],
-    ["ミニトマト", "🍅"], ["トマト", "🍅"], ["キュウリ", "🥒"], ["ナス", "🍆"], ["ピーマン", "🫑"], ["やさい", "🥕"], ["{野菜|やさい}", "🥕"],
-    ["たね", "🌱"], ["{芽|め}", "🌱"], ["{発芽|はつが}", "🌱"], ["{子葉|しよう}", "🌱"], ["{花|はな}", "🌼"], ["{葉|は}", "🍃"], ["はっぱ", "🍃"], ["{根|ね}", "🌱"], ["くき", "🌿"], ["{植物|しょくぶつ}", "🪴"], ["{木|き}", "🌳"],
-    ["じしゃく", "🧲"], ["{磁石|じしゃく}", "🧲"], ["{電磁石|でんじしゃく}", "🧲"], ["{方位|ほうい}じしん", "🧭"], ["{豆|まめ}{電球|でんきゅう}", "💡"], ["{明|あ}かり", "💡"], ["かん{電池|でんち}", "🔋"], ["{電池|でんち}", "🔋"], ["{電気|でんき}", "⚡"], ["{電流|でんりゅう}", "⚡"], ["{回路|かいろ}", "💡"], ["モーター", "⚙️"], ["{発電|はつでん}", "⚡"],
-    ["{太陽|たいよう}", "☀️"], ["{日|ひ}なた", "☀️"], ["{日光|にっこう}", "☀️"], ["かげ", "⛱️"], ["{月|つき}", "🌙"], ["{満月|まんげつ}", "🌕"], ["{星|ほし}", "⭐"], ["{雲|くも}", "☁️"], ["{雨|あめ}", "☔"], ["{台風|たいふう}", "🌀"], ["{天気|てんき}", "🌤️"], ["{気温|きおん}", "🌡️"], ["{温度|おんど}", "🌡️"], ["{雪|ゆき}", "⛄"], ["ゆき", "⛄"], ["{氷|こおり}", "🧊"], ["こおり", "🧊"], ["{冬|ふゆ}", "⛄"], ["{春|はる}", "🌸"], ["{夏|なつ}", "🌻"], ["{秋|あき}", "🍁"],
-    ["{火山|かざん}", "🌋"], ["ふん{火|ひ}", "🌋"], ["{地|じ}しん", "🏚️"], ["{地層|ちそう}", "🪨"], ["{化石|かせき}", "🦴"], ["{石灰|せっかい}{水|すい}", "🧪"], ["{石|いし}", "🪨"], ["{川|かわ}", "🏞️"], ["{流|なが}れる{水|みず}", "🏞️"], ["{海|うみ}", "🌊"],
-    ["かがみ", "🪞"], ["{虫|むし}めがね", "🔍"], ["けんび{鏡|きょう}", "🔬"], ["{温度|おんど}{計|けい}", "🌡️"], ["アルコールランプ", "🔥"], ["{燃|も}え", "🔥"], ["{燃|も}や", "🔥"], ["ろうそく", "🕯️"], ["{酸素|さんそ}", "💨"], ["{二酸化炭素|にさんかたんそ}", "💨"], ["{空気|くうき}", "💨"], ["{風|かぜ}", "🎐"], ["かぜ", "🎐"], ["ゴム", "🪀"], ["ふりこ", "⏱️"], ["てこ", "⚖️"], ["{重|おも}さ", "⚖️"], ["てんびん", "⚖️"],
-    ["{音|おと}", "🔔"], ["たいこ", "🥁"], ["{糸|いと}{電話|でんわ}", "📞"], ["{水|みず}よう{液|えき}", "🧪"], ["{水溶液|すいようえき}", "🧪"], ["リトマス{紙|し}", "🧪"], ["{食塩|しょくえん}", "🧂"], ["ミョウバン", "🧂"], ["{水|みず}じょう{気|き}", "💨"], ["ふっとう", "♨️"], ["{湯|ゆ}", "♨️"], ["{水|みず}", "💧"],
-    ["ほね", "🦴"], ["{骨|ほね}", "🦴"], ["きん{肉|にく}", "💪"], ["うで", "💪"], ["{心臓|しんぞう}", "❤️"], ["{心|こころ}ぞう", "❤️"], ["{血液|けつえき}", "🩸"], ["{肺|はい}", "🫁"], ["{呼吸|こきゅう}", "🫁"], ["{胃|い}", "🍙"], ["だ{液|えき}", "🍙"], ["{食|た}べ{物|もの}", "🍙"], ["{赤|あか}ちゃん", "👶"], ["{子|こ}ども", "👶"], ["{母親|ははおや}", "🤰"], ["{子宮|しきゅう}", "🤰"],
-    ["ほけんしつ", "🏥"], ["としょしつ", "📚"], ["としょかん", "📚"], ["きゅうしょく", "🍱"], ["せんせい", "🧑‍🏫"], ["こうちょう", "🧑‍🏫"], ["しょうぼう", "🚒"], ["ゆうびん", "📮"], ["てがみ", "📮"], ["こうばん", "👮"], ["おまわりさん", "👮"], ["びょういん", "🏥"], ["こうえん", "🌳"], ["しんごう", "🚦"], ["どうろ", "🚦"], ["あいさつ", "🙋"], ["てを あらう", "🧼"], ["{手|て}をあらう", "🧼"], ["がっこう", "🏫"], ["{学校|がっこう}", "🏫"],
-    ["ふうせん", "🎈"], ["かざぐるま", "🎐"], ["おもちゃ", "🧸"], ["くるま", "🚗"], ["{車|くるま}", "🚗"], ["いきもの", "🐾"], ["{生|い}き{物|もの}", "🐾"], ["どうぶつ", "🐾"], ["{動物|どうぶつ}", "🐾"], ["{森林|しんりん}", "🌳"], ["{地球|ちきゅう}", "🌏"], ["ごみ", "♻️"], ["リサイクル", "♻️"]
+    ["アサガオ", "asagao"], ["ヒマワリ", "himawari"], ["チューリップ", "tulip"], ["サクラ", "sakura"], ["ホウセンカ", "housenka"], ["ヘチマ", "hechima"], ["インゲンマメ", "mebae"], ["ドングリ", "donguri"], ["おちば", "ichou"], ["{落|お}ち{葉|ば}", "ichou"], ["もみじ", "momiji"], ["{紅葉|こうよう}", "momiji"],
+    ["モンシロチョウ", "monshiro"], ["アゲハ", "monshiro"], ["チョウ", "monshiro"], ["ちょう", "monshiro"], ["よう{虫|むし}", "aomushi"], ["あおむし", "aomushi"], ["さなぎ", "sanagi"], ["アリ", "ari"], ["テントウムシ", "tentou"], ["てんとうむし", "tentou"], ["バッタ", "batta"], ["コオロギ", "koorogi"], ["スズムシ", "koorogi"], ["セミ", "semi"], ["トンボ", "tonbo"], ["ヤゴ", "g_tonbo2"], ["カブトムシ", "kabuto"], ["こん{虫|ちゅう}", "tentou"], ["クモ", "spider"], ["カタツムリ", "katatsumuri"], ["ダンゴムシ", "dangomushi"],
+    ["メダカ", "medaka"], ["{魚|さかな}", "medaka"], ["さかな", "medaka"], ["ザリガニ", "zarigani"], ["カエル", "kaeru"], ["ヒキガエル", "kaeru"], ["ツバメ", "tsubame"], ["{鳥|とり}", "tsubame"], ["ウサギ", "usagi"], ["イヌ", "inu"], ["{犬|いぬ}", "inu"], ["{動物|どうぶつ}", "usagi"], ["どうぶつ", "usagi"],
+    ["ミニトマト", "minitomato"], ["トマト", "minitomato"], ["キュウリ", "kyuuri"], ["ナス", "nasu"], ["ピーマン", "piman"], ["ニンジン", "ninjin"], ["やさい", "ninjin"], ["{野菜|やさい}", "ninjin"],
+    ["たね", "tane"], ["{芽|め}", "mebae"], ["{発芽|はつが}", "mebae"], ["{子葉|しよう}", "mebae"], ["{花|はな}", "housenka"], ["はな", "asagao"], ["{葉|は}", "happa"], ["はっぱ", "happa"], ["{根|ね}", "nekukiha"], ["くき", "nekukiha"], ["{植物|しょくぶつ}", "uekibachi"], ["{木|き}", "kinomi"], ["{森林|しんりん}", "mori"], ["{森|もり}", "mori"],
+    ["じしゃく", "ujishaku"], ["{磁石|じしゃく}", "ujishaku"], ["{電磁石|でんじしゃく}", "ujishaku"], ["{方位|ほうい}じしん", "houijishin"], ["{方位|ほうい}{磁針|じしん}", "houijishin"], ["{豆|まめ}{電球|でんきゅう}", "mamedenkyuu"], ["{明|あ}かり", "mamedenkyuu"], ["かん{電池|でんち}", "denchi"], ["{電池|でんち}", "denchi"], ["{光電池|こうでんち}", "koudenchi"], ["{電気|でんき}", "inazuma"], ["{電流|でんりゅう}", "inazuma"], ["{回路|かいろ}", "mamedenkyuu"], ["モーター", "motor"], ["{手回|てまわ}し{発電|はつでん}{機|き}", "hatsudenki"], ["{発電|はつでん}", "hatsudenki"],
+    ["{太陽|たいよう}", "taiyou"], ["{日|ひ}なた", "taiyou"], ["{日光|にっこう}", "taiyou"], ["かげ", "taiyou"], ["{三日月|みかづき}", "mikazuki"], ["{満月|まんげつ}", "mangetsu"], ["{月|つき}", "mikazuki"], ["{星|ほし}", "hoshi"], ["{雲|くも}", "kumo"], ["{雨|あめ}", "kasa"], ["{台風|たいふう}", "taifuu"], ["{天気|てんき}", "kumo"], ["{気温|きおん}", "ondokei"], ["{温度|おんど}", "ondokei"], ["{雪|ゆき}", "yukidaruma"], ["ゆき", "yukidaruma"], ["{氷|こおり}", "koori"], ["こおり", "koori"], ["ふゆ", "yukidaruma"], ["{冬|ふゆ}", "yukidaruma"], ["はる", "sakura"], ["{春|はる}", "sakura"], ["なつ", "himawari"], ["{夏|なつ}", "himawari"], ["あき", "momiji"], ["{秋|あき}", "momiji"],
+    ["{火山|かざん}", "kazan"], ["ふん{火|ひ}", "kazan"], ["{地|じ}しん", "chisou"], ["{地層|ちそう}", "chisou"], ["{化石|かせき}", "ammonite"], ["{石|いし}", "ishi"], ["{川|かわ}", "kawa"], ["{流|なが}れる{水|みず}", "kawa"], ["{海|うみ}", "nami"], ["{地球|ちきゅう}", "chikyuu"],
+    ["かがみ", "kagami"], ["{虫|むし}めがね", "mushimegane"], ["けんび{鏡|きょう}", "kenbikyou"], ["{顕微鏡|けんびきょう}", "kenbikyou"], ["{温度|おんど}{計|けい}", "ondokei"], ["アルコールランプ", "alcohol"], ["{燃|も}え", "rousoku"], ["{燃|も}や", "rousoku"], ["ろうそく", "rousoku"], ["{酸素|さんそ}", "shikenkan"], ["{二酸化炭素|にさんかたんそ}", "shikenkan"], ["{石灰|せっかい}{水|すい}", "shikenkan"], ["{空気|くうき}", "kaze"], ["{風|かぜ}", "kaze"], ["かぜ", "kazaguruma"], ["ゴム", "gomucar"], ["ふりこ", "furiko"], ["てこ", "teko"], ["{重|おも}さ", "tenbin"], ["てんびん", "tenbin"], ["{台|だい}ばかり", "denshitenbin"], ["{電子|でんし}てんびん", "denshitenbin"],
+    ["{音|おと}", "taiko"], ["たいこ", "taiko"], ["{糸|いと}{電話|でんわ}", "itodenwa"], ["{水|みず}よう{液|えき}", "shikenkan"], ["{水溶液|すいようえき}", "shikenkan"], ["リトマス{紙|し}", "shikenkan"], ["{食塩|しょくえん}", "shokuen"], ["ミョウバン", "shokuen"], ["{水|みず}じょう{気|き}", "yakan"], ["ふっとう", "yakan"], ["{湯|ゆ}", "yakan"], ["{水|みず}", "shizuku"],
+    ["ほね", "hone"], ["{骨|ほね}", "hone"], ["きん{肉|にく}", "ude"], ["うで", "ude"], ["{関節|かんせつ}", "gaikotsu"], ["{心臓|しんぞう}", "shinzou"], ["{心|こころ}ぞう", "shinzou"], ["{血液|けつえき}", "chi"], ["{脈|みゃく}はく", "shinzou"], ["{肺|はい}", "hai"], ["{呼吸|こきゅう}", "hai"], ["{胃|い}", "i"], ["だ{液|えき}", "onigiri"], ["{食|た}べ{物|もの}", "onigiri"], ["{消化|しょうか}", "i"], ["{赤|あか}ちゃん", "akachan"], ["{子|こ}ども", "akachan"], ["{母親|ははおや}", "ninpu"], ["{子宮|しきゅう}", "ninpu"], ["{人|ひと}の{体|からだ}", "gaikotsu"],
+    ["ほけんしつ", "kyuukyuu"], ["けが", "kyuukyuu"], ["としょしつ", "hon"], ["としょかん", "hon"], ["きゅうしょく", "kyuushoku"], ["せんせい", "sensei"], ["こうちょう", "sensei"], ["しょうぼう", "shoubousha"], ["かじ", "shoubousha"], ["ゆうびん", "post"], ["てがみ", "post"], ["こうばん", "kouban"], ["おまわりさん", "kouban"], ["びょういん", "byouin"], ["こうえん", "kouen"], ["しんごう", "shingou"], ["どうろ", "shingou"], ["あいさつ", "aisatsu"], ["てを あらう", "tearai"], ["{手|て}をあらう", "tearai"], ["がっこう", "gakkou"], ["{学校|がっこう}", "gakkou"], ["まち", "machi"],
+    ["ふうせん", "fuusen"], ["かざぐるま", "kazaguruma"], ["おもちゃ", "kuma"], ["いきもの", "dangomushi"], ["{生|い}き{物|もの}", "tentou"], ["ごみ", "recycle"], ["リサイクル", "recycle"], ["{光|ひかり}", "taiyou"], ["ストップウォッチ", "stopwatch"]
   ].map(([w, e]) => [noRuby(w), e]).sort((a, b) => b[0].length - a[0].length);
-  const PIC_DEF = { "s1.school": "🏫", "s1.asagao": "🌺", "s1.creature": "🐾", "s1.season": "🍂", "s2.veg": "🥕", "s2.town": "🏘️", "s2.creature": "🐾", "s2.toy": "🧸", "sum.s1-01": "🏫", "sum.s1-02": "🌺", "sum.s1-03": "🐾", "sum.s1-04": "🍂", "sum.s2-01": "🥕", "sum.s2-02": "🏘️", "sum.s2-03": "🐾", "sum.s2-04": "🧸" };
+  const PIC_DEF = { "s1.school": "gakkou", "s1.asagao": "asagao", "s1.creature": "dangomushi", "s1.season": "momiji", "s2.veg": "minitomato", "s2.town": "machi", "s2.creature": "zarigani", "s2.toy": "kazaguruma", "sum.s1-01": "gakkou", "sum.s1-02": "asagao", "sum.s1-03": "dangomushi", "sum.s1-04": "momiji", "sum.s2-01": "minitomato", "sum.s2-02": "machi", "sum.s2-03": "zarigani", "sum.s2-04": "kazaguruma" };
   const picScope = (id) => /^(s\d|r[3-6])\./.test(id) || /^sum\.(s\d|r[3-6])-/.test(id);
+  // 問いの文から、絵の名前を1つか2つえらぶ(「、」でつないで返す)
   function picOf(q, def) {
     let t = noRuby(q);
     const out = [];
@@ -118,8 +125,10 @@ var RK = (() => {
       if (!out.includes(e)) out.push(e);
       t = t.slice(0, i) + "　".repeat(w.length) + t.slice(i + w.length);
     }
-    return out.length ? out.join("") : def || "";
+    return out.length ? out.join(",") : def || "";
   }
+  // 問題のよこの絵の HTML
+  const picHtml = (pic) => String(pic).split(",").filter(Boolean).map((n) => (picSrc(n) ? `<img src="${picSrc(n)}" alt="">` : `<span>${n}</span>`)).join("");
 
   // ===== 書いて答える問題に、難易度に合わせて選択肢をつける =====
   // 同じ小単元のほかの問題の答えを、まちがいの選択肢にする
@@ -386,8 +395,11 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
       generate(rng, p, ctx) {
         let pool = list.filter((x) => (x.lv || 1) <= p.max);
         if (!pool.length) pool = list;
+        const idx = ctx && Number.isInteger(ctx.index) ? ctx.index : 0;
+        // その難易度の図を使いきったら、ほかの難易度の図も出す(同じ図ばかりにならないように)
+        if (idx >= pool.length && o.vary === undefined) pool = list;
         // 図の問題を使いきったら、同じ図の問題も出せるようにする(round)
-        const round = ctx && Number.isInteger(ctx.index) ? Math.floor(ctx.index / pool.length) : 0;
+        const round = Math.floor(idx / pool.length);
         const it = pickW(rng, pool.map((x) => ({ ...x, lv: x.lv || 1 })), p.max);
         const r = it.make(rng, p);
         const qs = r.qs;
@@ -497,5 +509,42 @@ H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
       })
     };
   }
-  return { LET, LV, noRuby, parse, bank, figs, calc, grade, T, fig, line, arrow, arrowHead, rect, circle, path, poly, emo, tag, mark, C, graph, table, svgEsc, rnd };
+  // ===== イラストの図に、記号(ア・イ…)と引き出し線をつける =====
+  // pts: [[x, y, "L" か "R", 記号], …](x, y はもとの画像の点)。W は絵のはば(mm)
+  function labeled(name, W, pts, o = {}) {
+    const [, iw, ih] = PIC_SRC[name] || ["", 100, 100];
+    const k = W / iw, H = ih * k, top = 3;
+    const hasL = pts.some((q) => q[2] === "L"), hasR = pts.some((q) => q[2] !== "L");
+    const padL = hasL ? 13 : 2, padR = hasR ? 13 : 2;
+    const items = [img(name, padL, top, W, H)];
+    let raw = "";
+    const lab = [];
+    for (const side of ["L", "R"]) {
+      const g = pts.filter((q) => (q[2] === "L") === (side === "L")).map((q) => ({ x: padL + q[0] * k, y: top + q[1] * k, s: q[3] })).sort((a, b) => a.y - b.y);
+      // 記号どうしが 6.5mm 以上はなれるように、上から順にずらす
+      let last = -99;
+      for (const q of g) { q.ly = Math.max(q.y, last + 6.5, 4); last = q.ly; }
+      const over = last - (top + H);
+      if (over > 0) for (const q of g) q.ly -= over;
+      for (const q of g) {
+        const lx = side === "L" ? padL - 6 : padL + W + 6;
+        const ex = side === "L" ? lx + 3 : lx - 3;
+        raw += `<line x1="${q.x.toFixed(2)}" y1="${q.y.toFixed(2)}" x2="${ex.toFixed(2)}" y2="${q.ly.toFixed(2)}" stroke="#fff" stroke-width="1.3"/>` + `<line x1="${q.x.toFixed(2)}" y1="${q.y.toFixed(2)}" x2="${ex.toFixed(2)}" y2="${q.ly.toFixed(2)}" stroke="#000" stroke-width="0.4"/>` + `<circle cx="${q.x.toFixed(2)}" cy="${q.y.toFixed(2)}" r="0.9" fill="#000" stroke="#fff" stroke-width="0.4"/>`;
+        lab.push(T(lx, q.ly + 1.4, q.s, 4, { bold: true }));
+      }
+    }
+    items.push({ t: "raw", svg: raw }, ...lab, ...(o.extra || []));
+    return { type: "draw", w: padL + W + padR, h: H + top * 2, scaleK: o.k || 1.2, items };
+  }
+  // 絵をならべた図(じゅんばん・えらぶ問題)。names の下に ア・イ… をつける
+  function picRow(names, size = 24, o = {}) {
+    const gap = o.gap ?? 4, items = [];
+    names.forEach((n, i) => {
+      const x = 2 + i * (size + gap);
+      items.push({ t: "raw", svg: `<rect x="${x}" y="2" width="${size}" height="${size}" rx="2.5" fill="#fff" stroke="#9cc" stroke-width="0.35"/>` }, img(n, x + 1.2, 3.2, size - 2.4, size - 2.4));
+      if (o.letters !== false) items.push(T(x + size / 2, size + 8.2, LET[i], 4, { bold: true }));
+    });
+    return { type: "draw", w: 4 + names.length * (size + gap) - gap, h: size + (o.letters === false ? 4 : 11), scaleK: o.k || 1.1, items };
+  }
+  return { PIC_SRC, picSrc, img, picHtml, labeled, picRow, LET, LV, noRuby, parse, bank, figs, calc, grade, T, fig, line, arrow, arrowHead, rect, circle, path, poly, emo, tag, mark, C, graph, table, svgEsc, rnd };
 })();

@@ -1,6 +1,6 @@
 // 小学5年 理科
 var r5 = (() => {
-  const { bank, figs, calc, T, fig, line, arrow, rect, circle, path, poly, C, LET, table, graph } = RK;
+  const { bank, figs, calc, T, fig, line, arrow, rect, circle, path, poly, C, LET, table, graph, labeled, picRow } = RK;
   const { cell, sym, compass, beaker, f2 } = RD;
   const M = (x, y, s) => T(x, y + 1.3, s, 3.8, { bold: true });
   const lead = (x1, y1, x2, y2) => line(x1, y1, x2, y2, { w: 0.3 }) + `<circle cx="${x1}" cy="${y1}" r="0.6" fill="#000"/>`;
@@ -299,16 +299,28 @@ var r5 = (() => {
     } }
   ], { vary: 3 });
 
-  return [weather, typhoon, germ, grow, germFig, fish, scope, fishFig, flower, flowerFig2, river, riverFig, dissolve, dissolveCalc, solubFig, human, emag, emagFig, pend, pendCalc, pendFig];
+  // ===== メダカの育ち方(イラスト) =====
+  const medakaFig = figs("r5.medakaFig", [
+    { lv: 1, make: (rng) => {
+      const order = rng.shuffle([0, 1, 2, 3]), st = ["g_medaka1", "g_medaka2", "g_medaka3", "g_medaka4"];
+      return { fig: picRow(order.map((k) => st[k]), 28), text: "メダカのたまごが育つようすの絵です。", qs: [["育つじゅんに記号をならべましょう。", [0, 1, 2, 3].map((k) => LET[order.indexOf(k)]).join("→")], ["心ぞうが動き、血液が流れているのが見えるのは、ア〜エのどれですか。", LET[order.indexOf(2)]], ["かえったばかりの子メダカのはらにあるふくろには、何が入っていますか。", "養分"]], key: "md" + order.join(), side: false };
+    } }
+  ], { vary: 6 });
+  // ===== 上皿てんびん(イラスト) =====
+  const tenbinFig = figs("r5.tenbinFig", [
+    { lv: 1, make: () => ({ fig: labeled("tenbin", 78, [[170, 165, "L", "ア"], [450, 150, "R", "イ"], [450, 30, "R", "ウ"]]), text: "図は、上皿てんびんです。", qs: [["アを何といいますか。", "皿"], ["イの針が、ウの目もりの中央から左右に等しくふれているとき、てんびんはどうなっていますか。", "つり合っている"], ["使わないとき、皿はどうしておきますか。", "かたほうに重ねておく"]], key: "tb1" }) },
+    { lv: 2, make: () => ({ fig: labeled("tenbin", 78, [[170, 165, "L", "ア"], [730, 165, "R", "イ"]]), text: "図は、上皿てんびんです。ものの重さをはかります(右ききの人)。", qs: [["はかりたいものは、ア・イのどちらの皿にのせますか。", "ア(左の皿)"], ["分銅は、重いもの・軽いもののどちらからのせますか。", "重いもの"], ["分銅は、何を使ってあつかいますか。", "ピンセット"]], key: "tb2" }) }
+  ]);
+  return [medakaFig, tenbinFig, weather, typhoon, germ, grow, germFig, fish, scope, fishFig, flower, flowerFig2, river, riverFig, dissolve, dissolveCalc, solubFig, human, emag, emagFig, pend, pendCalc, pendFig];
 })();
 var r5Grade = RK.grade(5, "小学5年 理科", [
   ["r5-01", "天気の変化", "地球", [["雲と天気の変わり方", "r5.weather", "w"]]],
   ["r5-02", "植物の発芽と成長", "生命", [["発芽の条件と養分", "r5.germ", "w"], ["成長の条件", "r5.grow", "w"], ["発芽の実験(表)", "r5.germFig", "f"]]],
-  ["r5-03", "魚のたんじょう", "生命", [["メダカのたんじょう", "r5.fish", "w"], ["けんび鏡の使い方", "r5.scope", "w"], ["メダカのおすとめす", "r5.fishFig", "f"]]],
+  ["r5-03", "魚のたんじょう", "生命", [["メダカのたんじょう", "r5.fish", "w"], ["けんび鏡の使い方", "r5.scope", "w"], ["メダカのおすとめす", "r5.fishFig", "f"], ["たまごの育ち方(絵)", "r5.medakaFig", "f"]]],
   ["r5-04", "花から実へ", "生命", [["受粉と実", "r5.flower", "w"], ["花のつくり(図)", "r5.flowerFig", "f"]]],
   ["r5-05", "台風と天気の変化", "地球", [["台風", "r5.typhoon", "w"]]],
   ["r5-06", "流れる水のはたらき", "地球", [["しん食・運ぱん・たい積", "r5.river", "w"], ["川の曲がったところ", "r5.riverFig", "f"]]],
-  ["r5-07", "もののとけ方", "粒子", [["水よう液とろ過", "r5.dissolve", "w"], ["とけ方の計算", "r5.dissolveCalc", "d"], ["とける量のグラフ", "r5.solubFig", "f"]]],
+  ["r5-07", "もののとけ方", "粒子", [["水よう液とろ過", "r5.dissolve", "w"], ["とけ方の計算", "r5.dissolveCalc", "d"], ["とける量のグラフ", "r5.solubFig", "f"], ["上皿てんびん(図)", "r5.tenbinFig", "f"]]],
   ["r5-08", "人のたんじょう", "生命", [["人の子どもの育ち方", "r5.human", "w"]]],
   ["r5-09", "電流がうみだす力", "エネルギー", [["電磁石のせいしつ", "r5.emag", "w"], ["電磁石の実験", "r5.emagFig", "f"]]],
   ["r5-10", "ふりこのきまり", "エネルギー", [["ふりこの1往復の時間", "r5.pend", "w"], ["ふりこの計算", "r5.pendCalc", "d"], ["ふりこの実験", "r5.pendFig", "f"]]]

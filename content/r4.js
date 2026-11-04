@@ -1,6 +1,6 @@
 // 小学4年 理科
 var r4 = (() => {
-  const { bank, figs, T, fig, line, arrow, rect, circle, path, poly, C, LET, table, graph } = RK;
+  const { bank, figs, T, fig, line, arrow, rect, circle, path, poly, C, LET, table, graph, labeled, picRow } = RK;
   const { cell, bulb, sym, thermometer, beaker, tube, lamp, moon, f2 } = RD;
   const M = (x, y, s) => T(x, y + 1.3, s, 3.8, { bold: true });
   const lead = (x1, y1, x2, y2) => line(x1, y1, x2, y2, { w: 0.3 }) + `<circle cx="${x1}" cy="${y1}" r="0.6" fill="#000"/>`;
@@ -300,7 +300,17 @@ var r4 = (() => {
     } }
   ], { vary: 6 });
 
-  return [spring, summer, autumn, winter, weather, tempFig, current, currentFig, rain, moonStar, moonFig, waterCycle, air, bone, volume, volFig, heat, heatFig, water, waterFig];
+  // ===== ヒトの体(イラスト) =====
+  const boneFig = figs("r4.boneFig", [
+    { lv: 1, make: () => ({ fig: labeled("arm", 66, [[160, 300, "L", "ア"], [285, 400, "R", "イ"], [70, 420, "L", "ウ"], [195, 690, "L", "エ"]]), text: "図は、ひじを曲げたときのうでのほねときん肉です。", qs: [["アは何ですか。", "ほね"], ["イ・ウは何ですか。", "きん肉"], ["エのように、ほねとほねのつなぎ目で曲がるところを何といいますか。", "関節"], ["うでを曲げたとき、ちぢんでいるのはイ・ウのどちらですか。", "イ"]], key: "arm1" }) },
+    { lv: 2, make: () => ({ fig: labeled("arm", 66, [[285, 400, "R", "ア"], [70, 420, "L", "イ"]]), text: "図は、ひじを曲げたときのうでのほねときん肉です(アはうちがわ、イはそとがわのきん肉)。", qs: [["うでを曲げたとき、アのきん肉はどうなっていますか。", "ちぢんでいる"], ["うでを曲げたとき、イのきん肉はどうなっていますか。", "ゆるんでいる"], ["うでをのばすとき、アとイはそれぞれどうなりますか。", "アはゆるみ、イはちぢむ"]], key: "arm2" }) }
+  ]);
+  // ===== アルコールランプ(イラスト) =====
+  const lampFig = figs("r4.lampFig", [
+    { lv: 1, make: () => ({ fig: labeled("lamp", 48, [[318, 320, "R", "ア"], [395, 430, "R", "イ"], [470, 770, "R", "ウ"]]), text: "図は、アルコールランプです。", qs: [["アを何といいますか。", "しん"], ["イを何といいますか。", "ふた"], ["ウのアルコールは、入れ物の何分目くらいまで入れますか。", "8分目くらい"]], key: "lp1" }) },
+    { lv: 2, make: () => ({ fig: labeled("lamp", 48, [[318, 320, "R", "ア"], [395, 430, "R", "イ"]]), text: "図は、アルコールランプです。", qs: [["火をつけるとき、マッチの火はアにどのように近づけますか。", "横から近づける"], ["火を消すときは、イをどのようにかぶせますか。", "ななめ上(横)からそっとかぶせる"], ["火のついたアルコールランプから、ほかのアルコールランプに火をうつしてもよいですか。", "うつしてはいけない"]], key: "lp2" }) }
+  ]);
+  return [boneFig, lampFig, spring, summer, autumn, winter, weather, tempFig, current, currentFig, rain, moonStar, moonFig, waterCycle, air, bone, volume, volFig, heat, heatFig, water, waterFig];
 })();
 var r4Grade = RK.grade(4, "小学4年 理科", [
   ["r4-01", "季節と生き物", "生命", [["春の生き物", "r4.spring", "w"], ["夏の生き物", "r4.summer", "w"], ["秋の生き物", "r4.autumn", "w"], ["冬の生き物と1年のまとめ", "r4.winter", "w"]]],
@@ -310,8 +320,8 @@ var r4Grade = RK.grade(4, "小学4年 理科", [
   ["r4-05", "月や星の動き", "地球", [["月と星", "r4.moonStar", "w"], ["月の形と動き(図)", "r4.moonFig", "f"]]],
   ["r4-06", "自然の中の水のすがた", "粒子", [["じょう発と水じょう気", "r4.waterCycle", "w"]]],
   ["r4-07", "とじこめた空気と水", "粒子", [["空気と水のせいしつ", "r4.air", "w"]]],
-  ["r4-08", "ヒトの体のつくりと運動", "生命", [["ほね・きん肉・関節", "r4.bone", "w"]]],
+  ["r4-08", "ヒトの体のつくりと運動", "生命", [["ほね・きん肉・関節", "r4.bone", "w"], ["うでのほねときん肉(図)", "r4.boneFig", "f"]]],
   ["r4-09", "ものの温度と体積", "粒子", [["温度と体積", "r4.volume", "w"], ["空気の体積の実験", "r4.volFig", "f"]]],
-  ["r4-10", "もののあたたまり方", "粒子", [["金ぞく・水・空気のあたたまり方", "r4.heat", "w"], ["あたたまり方の図", "r4.heatFig", "f"]]],
+  ["r4-10", "もののあたたまり方", "粒子", [["金ぞく・水・空気のあたたまり方", "r4.heat", "w"], ["あたたまり方の図", "r4.heatFig", "f"], ["アルコールランプの使い方(図)", "r4.lampFig", "f"]]],
   ["r4-11", "水のすがたの変化", "粒子", [["ふっとうとこおる", "r4.water", "w"], ["水を熱したときのグラフ", "r4.waterFig", "f"]]]
 ]);

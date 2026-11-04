@@ -63,6 +63,15 @@ s = re.sub(r'\{\{ICON:(\w+)\}\}', lambda m: 'data:image/png;base64,' + base64.b6
 # お金の絵({{MONEY:名前}} に assets/money/名前.webp)
 # お金の絵は理科ではつかわない(算数のコードの名残り)
 s = re.sub(r'\{\{MONEY:(\w+)\}\}', '', s)
+# 理科のイラスト・図(assets/pic・assets/fig)を、名前 → [data URI, はば, 高さ] の表にして /*PICMAP*/{} に入れる
+from PIL import Image as _Image
+_pm = {}
+for _d in ['pic', 'fig']:
+    for _f in sorted((root / 'assets' / _d).glob('*.webp')):
+        _w, _h = _Image.open(_f).size
+        _pm[_f.stem] = ['data:image/webp;base64,' + base64.b64encode(_f.read_bytes()).decode(), _w, _h]
+assert s.count('/*PICMAP*/{}') == 1
+s = s.replace('/*PICMAP*/{}', json.dumps(_pm))
 s = re.sub(r'\{\{VENDOR:([\w.\-]+)\}\}', lambda m: (root / 'vendor' / m.group(1)).read_text(encoding='utf-8'), s)
 assert '{{CHARA:' not in s and '{{VENDOR:' not in s and '{{MONEY:' not in s and '{{ICON:' not in s
 
@@ -71,6 +80,7 @@ assert '{{CHARA:' not in s and '{{VENDOR:' not in s and '{{MONEY:' not in s and 
 import shutil
 shutil.copyfile(root / 'assets' / 'icon' / 'icon180.png', root / 'docs' / 'apple-touch-icon.png')
 shutil.copyfile(root / 'assets' / 'icon' / 'icon32.png', root / 'docs' / 'favicon.png')
+shutil.copyfile(root / 'assets' / 'icon' / 'ogp.jpg', root / 'docs' / 'ogp.jpg')
 (root / 'docs' / 'index.html').write_text(s, encoding='utf-8')
 hook = '  window.__T = { generators, GRADES, buildSheet, makeRng, topicParams, getGenerator, kanji_default, renderText, makeKanjiPolicy, sheetHtml, paginate, ansify, HINTS, topicRuby, topicKinds, filledSheet, pageFill };\n})();\n\n</script>'
 end = '})();\n\n</script>'

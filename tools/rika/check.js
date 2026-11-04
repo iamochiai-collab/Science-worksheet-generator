@@ -20,7 +20,7 @@ const pw = (() => { try { return require('playwright'); } catch (e) { return req
         for (let i = 0; i < N; i++) {
           let pr;
           try { pr = gen.generate(rng, p, { index: i }); } catch (e) { out.push(`${id}/${lv}: ${e.message}`); break; }
-          const txt = JSON.stringify(pr);
+          const txt = JSON.stringify(pr).replace(/data:image\/[a-z]+;base64,[A-Za-z0-9+\/=]+/g, "IMG");
           if (!pr.answer || !String(pr.answer.display ?? "").trim()) out.push(`${id}/${lv}: 答えがない ${pr.text}`);
           if (/undefined|NaN|Infinity|\[object/.test(txt)) out.push(`${id}/${lv}: おかしな値 ${txt.slice(0, 200)}`);
           const raw = (pr.figure?.items || []).filter((x) => x.t === "raw").map((x) => x.svg).join("");

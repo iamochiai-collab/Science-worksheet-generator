@@ -10,6 +10,13 @@
 <link rel="icon" type="image/png" sizes="64x64" href="{{ICON:icon64}}">
 <link rel="icon" type="image/png" sizes="512x512" href="{{ICON:icon512}}">
 <link rel="apple-touch-icon" sizes="180x180" href="{{ICON:icon180}}">
+<meta name="description" content="小学1・2年の生活科から中学3年の理科まで、単元ごとの理科プリントを作って印刷できます。">
+<meta property="og:title" content="理科プリント">
+<meta property="og:description" content="小学1・2年の生活科から中学3年の理科まで、単元ごとの理科プリントを作って印刷できます。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://iamochiai-collab.github.io/Science-worksheet-generator/">
+<meta property="og:image" content="https://iamochiai-collab.github.io/Science-worksheet-generator/ogp.jpg">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0a6aa1">
 <script>
   // 公開ページ(https)で開いたときは、ホーム画面のアイコンをファイルのほうにする(iPhone・iPad は data URI を使わないことがあるため)
@@ -438,6 +445,11 @@ table.data.dense th, table.data.dense td { padding: 3pt 4pt; min-width: 26pt; }
 .item-pic { position: absolute; right: 0; top: 1mm; width: 26mm; height: 22mm; display: flex; align-items: center; justify-content: center; gap: 0.5mm; flex-wrap: nowrap; font-size: 24pt; line-height: 1; border: 1pt solid #cfe3ea; border-radius: 3mm; background: #fbfdfe; letter-spacing: 0; }
 .item-pic.two { font-size: 22pt; }
 .sheet:not(.grade-1) .item-pic { width: 18mm; height: 15mm; font-size: 17pt; border-radius: 2mm; }
+.item-pic { background: #fff; padding: 1mm; box-sizing: border-box; }
+.item-pic img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.item-pic.two img { max-width: 49%; }
+.sheet:not(.grade-1) .item-pic { width: 20mm; height: 17mm; }
+.sheet:not(.grade-1) .item.has-pic { padding-right: 23mm; min-height: 18mm; }
 .sheet.grade-7 .item-body, .sheet.grade-8 .item-body, .sheet.grade-9 .item-body { font-size: 14.5pt; letter-spacing: 0.3pt; }
 .sheet.grade-10 .item-body, .sheet.grade-11 .item-body, .sheet.grade-12 .item-body, .sheet.grade-13 .item-body, .sheet.grade-14 .item-body, .sheet.grade-15 .item-body { font-size: 13.5pt; letter-spacing: 0.2pt; }
 .sheet.grade-1 .item.has-figure .item-body { font-size: 17pt; letter-spacing: 1pt; line-height: 1.8; }
@@ -34645,7 +34657,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
           // 式は考えるスペース(か計算のます)があるときだけ書く
           const note = K ? noteHtml(K.note || (calcMm || gridWs ? K.work : "")) : "";
           return `
-        <li class="item ${p2.workspace?.type === "grid" ? "has-grid" : ""} ${p2.figure ? "has-figure" : ""}${p2.figure?.type === "hissan" ? " has-hissan" : ""}${tr ? " trace" : ""}${p2.pic ? " has-pic" : ""}">${p2.pic ? `<span class="item-pic" aria-hidden="true">${esc2(p2.pic)}</span>` : ""}
+        <li class="item ${p2.workspace?.type === "grid" ? "has-grid" : ""} ${p2.figure ? "has-figure" : ""}${p2.figure?.type === "hissan" ? " has-hissan" : ""}${tr ? " trace" : ""}${p2.pic ? " has-pic" : ""}">${p2.pic ? `<span class="item-pic${String(p2.pic).includes(",") ? " two" : ""}" aria-hidden="true">${typeof RK !== "undefined" ? RK.picHtml(p2.pic) : ""}</span>` : ""}
           ${!p2.no && !String(a.text + tail).trim() ? "" : `<span class="item-head">${p2.no ? `<span class="item-no">(${p2.no})</span>` : ""}${p2.figure?.type === "hissan" ? "" : `<span class="item-body">${tk(a.text + tail)}</span>`}</span>`}
           ${fig(p2, K?.kfig)}
           ${calcMm ? calcHtml(calcMm, policy, p2.workspace?.type === "lines" ? "{考|かんが}え{方|かた}" : "", note) : ""}

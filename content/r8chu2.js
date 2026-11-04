@@ -1,6 +1,6 @@
 // 中学2年 理科
 var r8chu2 = (() => {
-  const { bank, figs, calc, T, fig, line, arrow, arrowHead, rect, circle, path, poly, C, LET, table, graph } = RK;
+  const { bank, figs, calc, T, fig, line, arrow, arrowHead, rect, circle, path, poly, C, LET, table, graph, labeled, picRow } = RK;
   const { sym, tube, lamp, stand, compass, f2 } = RD;
   const M = (x, y, s) => T(x, y + 1.3, s, 3.6, { bold: true });
   const lead = (x1, y1, x2, y2) => line(x1, y1, x2, y2, { w: 0.3 }) + `<circle cx="${x1}" cy="${y1}" r="0.6" fill="#000"/>`;
@@ -547,7 +547,12 @@ var r8chu2 = (() => {
 3|放射線の利用例を1つ答えましょう。|レントゲン検査(医療・品種改良・非破壊検査など)
 `);
 
-  return [decomp, atom, decompFig, react, equation, massLaw, massCalc, massFig, cell, cellFig, plant2, plant2Fig, digest, circulate, heartFig, nerve, weather, pressureCalc, weatherFig, humid, humidCalc, front, japan, frontFig, ohm, ohmCalc, ohmFig, power, powerCalc, magnet, magnetFig, static_];
+  // ===== 骨と筋肉(イラスト) =====
+  const armFig = figs("c2r.armFig", [
+    { lv: 1, make: () => ({ fig: labeled("arm", 66, [[285, 400, "R", "ア"], [70, 420, "L", "イ"], [305, 585, "R", "ウ"], [195, 690, "L", "エ"]]), text: "図は、ヒトのうでの骨と筋肉を表したものです。", qs: [["筋肉の両端にあり、骨についているウを何といいますか。", "けん"], ["エのように、骨と骨のつなぎ目で曲がるところを何といいますか。", "関節"], ["うでを曲げるとき、縮むのはア・イのどちらですか。", "ア"], ["うでをのばすとき、縮むのはア・イのどちらですか。", "イ"]], key: "arm" }) },
+    { lv: 2, make: () => ({ fig: labeled("arm", 66, [[285, 400, "R", "ア"], [70, 420, "L", "イ"]]), text: "図は、ヒトのうでの骨と筋肉を表したものです。", qs: [["筋肉に命令を伝えるのは何という神経ですか。", "運動神経"], ["熱いものにふれて思わずうでを引っこめたとき、アの筋肉に命令を出したのはどこですか。", "せきずい"], ["このように、意識とは関係なく起こる反応を何といいますか。", "反射"]], key: "arm2" }) }
+  ]);
+  return [armFig, decomp, atom, decompFig, react, equation, massLaw, massCalc, massFig, cell, cellFig, plant2, plant2Fig, digest, circulate, heartFig, nerve, weather, pressureCalc, weatherFig, humid, humidCalc, front, japan, frontFig, ohm, ohmCalc, ohmFig, power, powerCalc, magnet, magnetFig, static_];
 })();
 var r8chu2Grade = RK.grade(8, "中学2年 理科", [
   ["k2-01", "物質の成り立ち", "粒子", [["分解", "c2r.decomp", "w"], ["原子・分子と化学式", "c2r.atom", "w"], ["炭酸水素ナトリウムの分解(図)", "c2r.decompFig", "f"]]],
@@ -556,7 +561,7 @@ var r8chu2Grade = RK.grade(8, "中学2年 理科", [
   ["k2-04", "生物と細胞", "生命", [["細胞のつくり", "c2r.cell", "w"], ["植物の細胞(図)", "c2r.cellFig", "f"]]],
   ["k2-05", "植物のからだのつくりとはたらき", "生命", [["光合成・維管束・蒸散", "c2r.plant", "w"], ["蒸散の実験(表)", "c2r.plant2Fig", "f"]]],
   ["k2-06", "動物のからだのつくりとはたらき", "生命", [["消化と吸収", "c2r.digest", "w"], ["呼吸・血液の循環・排出", "c2r.circulate", "w"], ["心臓のつくり", "c2r.heartFig", "f"]]],
-  ["k2-07", "刺激と反応", "生命", [["感覚器官と神経", "c2r.nerve", "w"]]],
+  ["k2-07", "刺激と反応", "生命", [["感覚器官と神経", "c2r.nerve", "w"], ["骨と筋肉(図)", "c2r.armFig", "f"]]],
   ["k2-08", "気象の観測", "地球", [["圧力・気圧・天気", "c2r.weather", "w"], ["圧力の計算", "c2r.pressure", "d"], ["天気図の記号", "c2r.weatherFig", "f"]]],
   ["k2-09", "雲のでき方と湿度", "地球", [["露点と湿度", "c2r.humid", "w"], ["湿度の計算", "c2r.humidCalc", "d"]]],
   ["k2-10", "前線と日本の気象", "地球", [["気団と前線", "c2r.front", "w"], ["日本の天気と季節", "c2r.japan", "w"], ["前線の図", "c2r.frontFig", "f"]]],

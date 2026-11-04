@@ -1,7 +1,7 @@
 // このファイルは tools/rika/annotate.js が content/r8chu2.js から作ったもの。直すときは content/r8chu2.js を直して作りなおす。
 // 中学2年 理科
 var r8chu2 = (() => {
-  const { bank, figs, calc, T, fig, line, arrow, arrowHead, rect, circle, path, poly, C, LET, table, graph } = RK;
+  const { bank, figs, calc, T, fig, line, arrow, arrowHead, rect, circle, path, poly, C, LET, table, graph, labeled, picRow } = RK;
   const { sym, tube, lamp, stand, compass, f2 } = RD;
   const M = (x, y, s) => T(x, y + 1.3, s, 3.6, { bold: true });
   const lead = (x1, y1, x2, y2) => line(x1, y1, x2, y2, { w: 0.3 }) + `<circle cx="${x1}" cy="${y1}" r="0.6" fill="#000"/>`;
@@ -548,7 +548,12 @@ var r8chu2 = (() => {
 3|{放射線|ほうしゃせん}の{利用|りよう}{例|れい}を1つ{答|こた}えましょう。|レントゲン{検査|けんさ}({医療|いりょう}・{品種|ひんしゅ}{改良|かいりょう}・{非破壊|ひはかい}{検査|けんさ}など)
 `);
 
-  return [decomp, atom, decompFig, react, equation, massLaw, massCalc, massFig, cell, cellFig, plant2, plant2Fig, digest, circulate, heartFig, nerve, weather, pressureCalc, weatherFig, humid, humidCalc, front, japan, frontFig, ohm, ohmCalc, ohmFig, power, powerCalc, magnet, magnetFig, static_];
+  // ===== 骨と筋肉(イラスト) =====
+  const armFig = figs("c2r.armFig", [
+    { lv: 1, make: () => ({ fig: labeled("arm", 66, [[285, 400, "R", "ア"], [70, 420, "L", "イ"], [305, 585, "R", "ウ"], [195, 690, "L", "エ"]]), text: "{図|ず}は、ヒトのうでの{骨|ほね}と{筋肉|きんにく}を{表|あらわ}したものです。", qs: [["{筋肉|きんにく}の{両端|りょうたん}にあり、{骨|ほね}についているウを{何|なん}といいますか。", "けん"], ["エのように、{骨|ほね}と{骨|ほね}のつなぎ{目|め}で{曲|ま}がるところを{何|なん}といいますか。", "{関節|かんせつ}"], ["うでを{曲|ま}げるとき、{縮|ちぢ}むのはア・イのどちらですか。", "ア"], ["うでをのばすとき、{縮|ちぢ}むのはア・イのどちらですか。", "イ"]], key: "arm" }) },
+    { lv: 2, make: () => ({ fig: labeled("arm", 66, [[285, 400, "R", "ア"], [70, 420, "L", "イ"]]), text: "{図|ず}は、ヒトのうでの{骨|ほね}と{筋肉|きんにく}を{表|あらわ}したものです。", qs: [["{筋肉|きんにく}に{命令|めいれい}を{伝|つた}えるのは{何|なん}という{神経|しんけい}ですか。", "{運動|うんどう}{神経|しんけい}"], ["{熱|あつ}いものにふれて{思|おも}わずうでを{引|ひ}っこめたとき、アの{筋肉|きんにく}に{命令|めいれい}を{出|だ}したのはどこですか。", "せきずい"], ["このように、{意識|いしき}とは{関係|かんけい}なく{起|お}こる{反応|はんのう}を{何|なん}といいますか。", "{反射|はんしゃ}"]], key: "arm2" }) }
+  ]);
+  return [armFig, decomp, atom, decompFig, react, equation, massLaw, massCalc, massFig, cell, cellFig, plant2, plant2Fig, digest, circulate, heartFig, nerve, weather, pressureCalc, weatherFig, humid, humidCalc, front, japan, frontFig, ohm, ohmCalc, ohmFig, power, powerCalc, magnet, magnetFig, static_];
 })();
 var r8chu2Grade = RK.grade(8, "{中学|ちゅうがく}2{年|ねん} {理科|りか}", [
   ["k2-01", "{物質|ぶっしつ}の{成|な}り{立|た}ち", "{粒子|りゅうし}", [["{分解|ぶんかい}", "c2r.decomp", "w"], ["{原子|げんし}・{分子|ぶんし}と{化学|かがく}{式|しき}", "c2r.atom", "w"], ["{炭酸|たんさん}{水素|すいそ}ナトリウムの{分解|ぶんかい}({図|ず})", "c2r.decompFig", "f"]]],
@@ -557,7 +562,7 @@ var r8chu2Grade = RK.grade(8, "{中学|ちゅうがく}2{年|ねん} {理科|り
   ["k2-04", "{生物|せいぶつ}と{細胞|さいぼう}", "{生命|せいめい}", [["{細胞|さいぼう}のつくり", "c2r.cell", "w"], ["{植物|しょくぶつ}の{細胞|さいぼう}({図|ず})", "c2r.cellFig", "f"]]],
   ["k2-05", "{植物|しょくぶつ}のからだのつくりとはたらき", "{生命|せいめい}", [["{光合成|こうごうせい}・{維管束|いかんそく}・{蒸散|じょうさん}", "c2r.plant", "w"], ["{蒸散|じょうさん}の{実験|じっけん}({表|ひょう})", "c2r.plant2Fig", "f"]]],
   ["k2-06", "{動物|どうぶつ}のからだのつくりとはたらき", "{生命|せいめい}", [["{消化|しょうか}と{吸収|きゅうしゅう}", "c2r.digest", "w"], ["{呼吸|こきゅう}・{血液|けつえき}の{循環|じゅんかん}・{排出|はいしゅつ}", "c2r.circulate", "w"], ["{心臓|しんぞう}のつくり", "c2r.heartFig", "f"]]],
-  ["k2-07", "{刺激|しげき}と{反応|はんのう}", "{生命|せいめい}", [["{感覚|かんかく}{器官|きかん}と{神経|しんけい}", "c2r.nerve", "w"]]],
+  ["k2-07", "{刺激|しげき}と{反応|はんのう}", "{生命|せいめい}", [["{感覚|かんかく}{器官|きかん}と{神経|しんけい}", "c2r.nerve", "w"], ["{骨|ほね}と{筋肉|きんにく}({図|ず})", "c2r.armFig", "f"]]],
   ["k2-08", "{気象|きしょう}の{観測|かんそく}", "{地球|ちきゅう}", [["{圧力|あつりょく}・{気圧|きあつ}・{天気|てんき}", "c2r.weather", "w"], ["{圧力|あつりょく}の{計算|けいさん}", "c2r.pressure", "d"], ["{天気|てんき}{図|ず}の{記号|きごう}", "c2r.weatherFig", "f"]]],
   ["k2-09", "{雲|くも}のでき{方|かた}と{湿度|しつど}", "{地球|ちきゅう}", [["{露点|ろてん}と{湿度|しつど}", "c2r.humid", "w"], ["{湿度|しつど}の{計算|けいさん}", "c2r.humidCalc", "d"]]],
   ["k2-10", "{前線|ぜんせん}と{日本|にほん}の{気象|きしょう}", "{地球|ちきゅう}", [["{気団|きだん}と{前線|ぜんせん}", "c2r.front", "w"], ["{日本|にほん}の{天気|てんき}と{季節|きせつ}", "c2r.japan", "w"], ["{前線|ぜんせん}の{図|ず}", "c2r.frontFig", "f"]]],

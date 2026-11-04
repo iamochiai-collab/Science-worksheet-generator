@@ -1,7 +1,7 @@
 // このファイルは tools/rika/annotate.js が content/r1sei.js から作ったもの。直すときは content/r1sei.js を直して作りなおす。
 // 小学1・2年 生活科(理科につながる内容を中心に)
 var r1sei = (() => {
-  const { bank, figs, T, fig, line, rect, circle, path, poly, emo, C, LET } = RK;
+  const { bank, figs, T, fig, line, rect, circle, path, poly, emo, C, LET, picRow } = RK;
   const M = (x, y, s) => T(x, y + 1.3, s, 4.2, { bold: true });
   const box = (x, y, w, h) => rect(x, y, w, h, { r: 3, f: "#fff", w: 0.4 });
   // えのカードをならべる。items: [えもじ, …]
@@ -82,22 +82,21 @@ var r1sei = (() => {
 `);
   const seasonFig = figs("s1.seasonFig", [
     { lv: 1, make: (rng) => {
-      const all = [["🌸", "はる"], ["🌷", "はる"], ["🌻", "なつ"], ["🍉", "なつ"], ["🍂", "あき"], ["🌰", "あき"], ["⛄", "ふゆ"], ["❄️", "ふゆ"]];
+      const all = [["sakura", "はる"], ["tulip", "はる"], ["aomushi", "はる"], ["himawari", "なつ"], ["semi", "なつ"], ["asagao", "なつ"], ["momiji", "あき"], ["donguri", "あき"], ["ichou", "あき"], ["koorogi", "あき"], ["yukidaruma", "ふゆ"], ["koori", "ふゆ"]];
       const want = rng.pick(["はる", "なつ", "あき", "ふゆ"]);
       const ok = rng.pick(all.filter((x) => x[1] === want));
       const ng = rng.shuffle(all.filter((x) => x[1] !== want)).filter((x, i, arr) => arr.findIndex((y) => y[1] === x[1]) === i).slice(0, 3);
       const items = rng.shuffle([ok, ...ng]);
-      const c = cards(items.map((x) => x[0]));
-      return { fig: fig(c.w, 40, c.s, c.lab, 1.25), text: `${want}に みられる ものは どれですか。`, qs: [["きごうで こたえましょう。", LET[items.indexOf(ok)]]], key: `${want}${items.map((x) => x[0]).join("")}`, side: false };
+      return { fig: picRow(items.map((x) => x[0]), 28), text: `${want}に みられる ものは どれですか。`, qs: [["きごうで こたえましょう。", LET[items.indexOf(ok)]]], key: `${want}${items.map((x) => x[0]).join("")}`, side: false };
     } }
   ], { vary: 12 });
   const creatureFig = figs("s1.creatureFig", [
     { lv: 1, make: (rng) => {
-      const others = [["🐞", "てんとうむし"], ["🦋", "ちょう"], ["🐜", "あり"], ["🐌", "かたつむり"], ["🦗", "バッタ(こおろぎ)"]];
-      const items = rng.shuffle([["🐟", "さかな"], ...rng.shuffle(others).slice(0, 3)]);
-      const ask = rng.int(0, 3);
-      const c = cards(items.map((x) => x[0]));
-      return { fig: fig(c.w, 40, c.s, c.lab, 1.25), text: "いきものの えです。", qs: [[`「${items[ask][1]}」は どれですか。`, LET[ask]], ["みずの なかで くらして いる いきものは どれですか。", LET[items.findIndex((x) => x[1] === "さかな")]]], key: items.map((x) => x[0]).join() + ask, side: false };
+      const others = [["tentou", "てんとうむし"], ["monshiro", "ちょう"], ["ari", "あり"], ["katatsumuri", "かたつむり"], ["batta", "バッタ"], ["dangomushi", "ダンゴムシ"], ["semi", "セミ"], ["kabuto", "カブトムシ"]];
+      const water = rng.pick([["medaka", "メダカ"], ["zarigani", "ザリガニ"]]);
+      const items = rng.shuffle([water, ...rng.shuffle(others).slice(0, 3)]);
+      const ask = rng.pick([0, 1, 2, 3].filter((i) => items[i] !== water));
+      return { fig: picRow(items.map((x) => x[0]), 28), text: "いきものの えです。", qs: [[`「${items[ask][1]}」は どれですか。`, LET[ask]], ["みずの なかで くらして いる いきものは どれですか。", LET[items.indexOf(water)]]], key: items.map((x) => x[0]).join() + ask, side: false };
     } }
   ], { vary: 12 });
 
@@ -118,11 +117,15 @@ var r1sei = (() => {
 `);
   const vegFig = figs("s2.vegFig", [
     { lv: 1, make: (rng) => {
-      const all = [["🍅", "ミニトマト"], ["🥒", "キュウリ"], ["🍆", "ナス"], ["🥕", "ニンジン"], ["🌽", "トウモロコシ"]];
+      const all = [["minitomato", "ミニトマト"], ["kyuuri", "キュウリ"], ["nasu", "ナス"], ["ninjin", "ニンジン"], ["piman", "ピーマン"]];
       const items = rng.shuffle(all).slice(0, 4);
       const ask = rng.shuffle([0, 1, 2, 3]).slice(0, 2);
-      const c = cards(items.map((x) => x[0]));
-      return { fig: fig(c.w, 40, c.s, c.lab, 1.25), text: "やさいの えです。", qs: ask.map((a) => [`「${items[a][1]}」は どれですか。`, LET[a]]), key: items.map((x) => x[0]).join() + ask.join(), side: false };
+      return { fig: picRow(items.map((x) => x[0]), 28), text: "やさいの えです。", qs: ask.map((a) => [`「${items[a][1]}」は どれですか。`, LET[a]]), key: items.map((x) => x[0]).join() + ask.join(), side: false };
+    } }
+  ,
+    { lv: 2, make: (rng) => {
+      const st = ["g_tomato1", "g_tomato2", "g_tomato3", "g_tomato4"], order = rng.shuffle([0, 1, 2, 3]);
+      return { fig: picRow(order.map((k) => st[k]), 28), text: "ミニトマトが そだつ ようすの えです。", qs: [["そだつ じゅんばんに きごうを ならべましょう。", [0, 1, 2, 3].map((k) => LET[order.indexOf(k)]).join("→")], ["たべられる あかい みは どれですか。", LET[order.indexOf(3)]]], key: "t" + order.join(), side: false };
     } }
   ], { vary: 12 });
   const town = bank("s2.town", `
@@ -166,11 +169,10 @@ var r1sei = (() => {
 `);
   const toyFig = figs("s2.toyFig", [
     { lv: 1, make: (rng) => {
-      const all = [["🎐", "かぜ"], ["🪁", "かぜ"], ["🧲", "じしゃく"], ["🎈", "くうき(かぜ)"]];
+      const all = [["kazaguruma", "かぜ"], ["ujishaku", "じしゃく"], ["fuusen", "くうき(かぜ)"], ["gomucar", "ゴム"]];
       const items = rng.shuffle(all).slice(0, 3);
       const ask = rng.int(0, 2);
-      const c = cards(items.map((x) => x[0]));
-      return { fig: fig(c.w, 40, c.s, c.lab, 1.25), text: "あそびに つかう ものの えです。", qs: [[`${LET[ask]}は、なんの ちからを つかって あそびますか。`, items[ask][1]]], key: items.map((x) => x[0]).join() + ask, side: false };
+      return { fig: picRow(items.map((x) => x[0]), 28), text: "あそびに つかう ものの えです。", qs: [[`${LET[ask]}は、なんの ちからを つかって あそびますか。`, items[ask][1]]], key: items.map((x) => x[0]).join() + ask, side: false };
     } }
   ], { vary: 8 });
 

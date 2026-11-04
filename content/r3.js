@@ -1,6 +1,6 @@
 // 小学3年 理科(教科書でよくある単元の順)
 var r3 = (() => {
-  const { bank, figs, T, fig, line, arrow, rect, circle, path, poly, emo, C, LET, table } = RK;
+  const { bank, figs, T, fig, line, arrow, rect, circle, path, poly, emo, C, LET, table, labeled, picRow } = RK;
   const { cell, bulb, barMagnet, compass, insect, plant } = RD;
   const M = (x, y, s) => T(x, y + 1.3, s, 3.8, { bold: true });
   const lead = (x1, y1, x2, y2) => line(x1, y1, x2, y2, { w: 0.3 }) + `<circle cx="${x1}" cy="${y1}" r="0.6" fill="#000"/>`;
@@ -64,9 +64,13 @@ var r3 = (() => {
 3|ヒマワリのたねとホウセンカのたねを、大きいじゅんにならべましょう。|>ヒマワリ|ホウセンカ
 `);
   const plantFig = figs("r3.plantFig", [
-    { lv: 1, make: () => ({ fig: fig(56, 66, plant(24, 44, 1) + lead(24, 6, 44, 6) + lead(17, 33, 44, 26) + lead(24, 52, 44, 52), [M(48, 6, "ア"), M(48, 26, "イ"), M(48, 52, "ウ")]), text: "図は、ホウセンカの体のつくりです。", qs: [["アの部分を何といいますか。", "くき"], ["イの部分を何といいますか。", "葉"], ["ウの部分を何といいますか。", "根"]], key: "hou" }) },
-    { lv: 2, make: () => ({ fig: fig(56, 66, plant(24, 44, 1) + lead(24, 52, 44, 52) + lead(17, 33, 44, 26), [M(48, 26, "ア"), M(48, 52, "イ")]), text: "図は、ホウセンカの体のつくりです。", qs: [["土の中にあるのは、ア・イのどちらですか。", "イ"], ["イの部分は、どんなはたらきをしていますか。", "体をささえ、水をとり入れる"], ["ヒマワリの体も、同じつくりですか。", "同じ(根・くき・葉)"]], key: "hou2" }) }
-  ]);
+    { lv: 1, make: () => ({ fig: labeled("nekukiha", 50, [[118, 140, "R", "ア"], [60, 125, "L", "イ"], [125, 255, "R", "ウ"]]), text: "図は、植物の体のつくりです。", qs: [["アの部分を何といいますか。", "くき"], ["イの部分を何といいますか。", "葉"], ["ウの部分を何といいますか。", "根"]], key: "nk1" }) },
+    { lv: 2, make: () => ({ fig: labeled("nekukiha", 50, [[160, 95, "R", "ア"], [80, 260, "L", "イ"]]), text: "図は、植物の体のつくりです。", qs: [["土の中にあるのは、ア・イのどちらですか。", "イ"], ["イの部分は、どんなはたらきをしていますか。", "体をささえ、水をとり入れる"], ["ホウセンカやヒマワリの体も、同じつくりですか。", "同じ(根・くき・葉)"]], key: "nk2" }) },
+    { lv: 2, make: (rng) => {
+      const order = rng.shuffle([0, 1, 2, 3]), st = ["tane", "mebae", "uekibachi", "housenka"];
+      return { fig: picRow(order.map((k) => st[k]), 26), text: "ホウセンカが育つようすの絵です。", qs: [["育つじゅんに記号をならべましょう。", [0, 1, 2, 3].map((k) => LET[order.indexOf(k)]).join("→")], ["たねをまいて、さいしょに出てくる葉を何といいますか。", "子葉"]], key: "ho" + order.join(), side: false };
+    } }
+  ], { vary: 6 });
 
   // ===== 3 チョウを育てよう =====
   const butterfly = bank("r3.butterfly", `
@@ -85,6 +89,17 @@ var r3 = (() => {
 3|よう虫の入れ物を、日光が直せつ当たらない所におくのはなぜですか。|入れ物の中があつくなりすぎないようにするため
 3|チョウのように、たまご→よう虫→さなぎ→成虫と育つこん虫を、2つ答えましょう。|カブトムシ、テントウムシ(アリ・ハチなど)
 `);
+
+  const butterflyFig = figs("r3.butterflyFig", [
+    { lv: 1, make: (rng) => {
+      const order = rng.shuffle([0, 1, 2, 3]), st = ["g_cho1", "g_cho2", "g_cho3", "g_cho4"];
+      return { fig: picRow(order.map((k) => st[k]), 28), text: "モンシロチョウが育つようすの絵です。", qs: [["育つじゅんに記号をならべましょう。", [0, 1, 2, 3].map((k) => LET[order.indexOf(k)]).join("→")], ["何も食べずに動かないすがたは、ア〜エのどれですか。", LET[order.indexOf(2)]], ["キャベツなどの葉を食べて大きくなるすがたを何といいますか。", "よう虫"]], key: "ch" + order.join(), side: false };
+    } },
+    { lv: 2, make: (rng) => {
+      const k = rng.int(0, 3), nm = ["たまご", "よう虫", "さなぎ", "成虫"][k];
+      return { fig: picRow([["g_cho1", "g_cho2", "g_cho3", "g_cho4"][k]], 36, { letters: false }), text: "モンシロチョウのある時期の絵です。", qs: [["このすがたを何といいますか。", nm], ["このすがたの次は、何になりますか。", ["よう虫", "さなぎ", "成虫", "(たまごをうむ)"][k]]], key: "c1" + k };
+    } }
+  ], { vary: 4 });
 
   // ===== 4 風とゴムの力のはたらき =====
   const windRubber = bank("r3.windRubber", `
@@ -130,9 +145,20 @@ var r3 = (() => {
 3|ショウリョウバッタが草むらにすむのはなぜですか。|草が食べ物になり、かくれる場所にもなるから
 `);
   const insectFig = figs("r3.insectFig", [
-    { lv: 1, make: () => ({ fig: fig(64, 66, insect(26, 18, 1) + lead(26, 18, 46, 10) + lead(26, 30, 46, 30) + lead(26, 52, 46, 52), [M(50, 10, "ア"), M(50, 30, "イ"), M(50, 52, "ウ")]), text: "図は、こん虫の体のつくりです。", qs: [["ア・イ・ウの部分の名前を書きましょう。", "ア 頭、イ むね、ウ はら"], ["あしは、ア〜ウのどこに何本ついていますか。", "イ(むね)に6本"], ["目やしょっかくがあるのは、ア〜ウのどこですか。", "ア"]], key: "ins1" }) },
-    { lv: 2, make: () => ({ fig: fig(64, 66, insect(26, 18, 1) + lead(14, 12, 46, 6) + lead(26, 30, 46, 30), [M(50, 6, "ア"), M(50, 30, "イ")]), text: "図は、こん虫の体のつくりです。", qs: [["アを何といいますか。", "しょっかく"], ["イの部分を何といいますか。", "むね"], ["体が3つに分かれ、あしが6本ある生き物を何といいますか。", "こん虫"]], key: "ins2" }) }
-  ]);
+    { lv: 1, make: () => ({ fig: labeled("insect", 52, [[355, 240, "R", "ア"], [355, 400, "R", "イ"], [355, 660, "R", "ウ"]]), text: "図は、こん虫の体のつくりです。", qs: [["ア・イ・ウの部分の名前を書きましょう。", "ア 頭、イ むね、ウ はら"], ["あしは、ア〜ウのどこに何本ついていますか。", "イ(むね)に6本"], ["目やしょっかくがあるのは、ア〜ウのどこですか。", "ア"]], key: "ins1" }) },
+    { lv: 2, make: () => ({ fig: labeled("insect", 52, [[230, 90, "L", "ア"], [355, 400, "R", "イ"], [150, 640, "L", "ウ"]]), text: "図は、こん虫の体のつくりです。", qs: [["アを何といいますか。", "しょっかく"], ["イの部分を何といいますか。", "むね"], ["ウ(あし)は、ぜんぶで何本ありますか。", "6本"]], key: "ins2" }) },
+    { lv: 2, make: (rng) => {
+      const order = rng.shuffle([0, 1, 2]), st = ["g_tonbo1", "g_tonbo2", "g_tonbo3"];
+      return { fig: picRow(order.map((k) => st[k]), 30), text: "トンボが育つようすの絵です。", qs: [["育つじゅんに記号をならべましょう。", [0, 1, 2].map((k) => LET[order.indexOf(k)]).join("→")], ["水の中でくらしているよう虫を何といいますか。", "ヤゴ"], ["トンボは、チョウとちがって何にならずに成虫になりますか。", "さなぎ"]], key: "tb" + order.join(), side: false };
+    } },
+    { lv: 1, make: (rng) => {
+      const ins = rng.shuffle([["ari", "アリ"], ["tentou", "テントウムシ"], ["batta", "バッタ"], ["semi", "セミ"], ["tonbo", "トンボ"], ["kabuto", "カブトムシ"]]).slice(0, 3);
+      const non = rng.shuffle([["spider", "クモ"], ["dangomushi", "ダンゴムシ"]]).slice(0, 1);
+      const items = rng.shuffle([...ins, ...non]);
+      const bad = items.indexOf(non[0]);
+      return { fig: picRow(items.map((x) => x[0]), 26), text: "いろいろな生き物の絵です。", qs: [["こん虫ではないものは、ア〜エのどれですか。", LET[bad]], ["それがこん虫ではない理由を書きましょう。", non[0][1] === "クモ" ? "あしが8本で、体が2つに分かれているから" : "あしが14本で、体が3つに分かれていないから"]], key: "ni" + items.map((x) => x[0]).join(), side: false };
+    } }
+  ], { vary: 6 });
 
   // ===== 6 太陽とかげ =====
   const shadow = bank("r3.shadow", `
@@ -312,15 +338,15 @@ var r3 = (() => {
     } }
   ]);
 
-  const list = [obs, seed, body, life, plantFig, butterfly, windRubber, windFig, insectW, insectFig, shadow, shadowFig, light, lightFig, sound, weight, weightFig, circuit, circuitFig, magnet, magnetFig];
+  const list = [obs, seed, body, life, plantFig, butterfly, butterflyFig, windRubber, windFig, insectW, insectFig, shadow, shadowFig, light, lightFig, sound, weight, weightFig, circuit, circuitFig, magnet, magnetFig];
   return list;
 })();
 var r3Grade = RK.grade(3, "小学3年 理科", [
   ["r3-01", "しぜんのかんさつ", "生命", [["かんさつのしかた", "r3.obs", "w"]]],
-  ["r3-02", "植物の育ち方", "生命", [["たねまきと子葉", "r3.seed", "w"], ["植物の体のつくり", "r3.body", "w"], ["体のつくり(図)", "r3.plantFig", "f"], ["花がさいたあと", "r3.life", "w"]]],
-  ["r3-03", "チョウを育てよう", "生命", [["チョウの育ち方", "r3.butterfly", "w"]]],
+  ["r3-02", "植物の育ち方", "生命", [["たねまきと子葉", "r3.seed", "w"], ["植物の体のつくり", "r3.body", "w"], ["体のつくり・育ち方(絵)", "r3.plantFig", "f"], ["花がさいたあと", "r3.life", "w"]]],
+  ["r3-03", "チョウを育てよう", "生命", [["チョウの育ち方", "r3.butterfly", "w"], ["育ち方のじゅんばん(絵)", "r3.butterflyFig", "f"]]],
   ["r3-04", "風とゴムの力のはたらき", "エネルギー", [["風とゴムの力", "r3.windRubber", "w"], ["実験の結果", "r3.windFig", "f"]]],
-  ["r3-05", "こん虫の世界", "生命", [["こん虫の体と育ち方", "r3.insect", "w"], ["こん虫の体(図)", "r3.insectFig", "f"]]],
+  ["r3-05", "こん虫の世界", "生命", [["こん虫の体と育ち方", "r3.insect", "w"], ["こん虫の体・育ち方(絵)", "r3.insectFig", "f"]]],
   ["r3-06", "太陽とかげ", "地球", [["かげと太陽の動き", "r3.shadow", "w"], ["かげの向き・地面の温度", "r3.shadowFig", "f"]]],
   ["r3-07", "光のせいしつ", "エネルギー", [["はね返した日光・集めた日光", "r3.light", "w"], ["光を重ねる", "r3.lightFig", "f"]]],
   ["r3-08", "音のせいしつ", "エネルギー", [["音のつたわり方と大きさ", "r3.sound", "w"]]],
