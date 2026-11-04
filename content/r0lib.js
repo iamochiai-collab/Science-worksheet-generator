@@ -15,7 +15,8 @@
 var r0lib = [];
 var RK = (() => {
   const LET = ["ア", "イ", "ウ", "エ", "オ", "カ", "キ", "ク"];
-  const LV = { basic: { max: 1 }, normal: { max: 2 }, challenge: { max: 3 } };
+  // max:出す問題のむずかしさの上限、opts:答えをえらぶ選択肢の数(0 は書いて答える)
+  const LV = { basic: { max: 1, opts: 3 }, normal: { max: 2, opts: 4 }, challenge: { max: 3, opts: 0 } };
   const noRuby = (s) => String(s ?? "").replace(/\{([^{}|]+)\|[^{}]*\}/g, "$1");
 
   function parse(src) {
@@ -59,7 +60,7 @@ var RK = (() => {
   }
   const optLine = (opts, kids) => opts.map((o, i) => `${LET[i]}　${o}`).join(kids || opts.join("").length > 34 ? "[[br]]" : "　　");
   // kids:1・2年(分かち書き)用のことば
-  function render(it, rng, kids) {
+  function render(it, rng, kids, p) {
     if (it.type === "qa") return { text: it.q, a: it.a };
     if (it.type === "tf") return { text: `（　　）${it.q}[[br]]${kids ? "〔ただしければ ○、まちがって いれば ×〕" : "〔正しければ○、まちがっていれば×〕"}`, a: it.a };
     if (it.type === "tfList") {
@@ -68,11 +69,18 @@ var RK = (() => {
     }
     if (it.type === "bank") {
       // 〔ことば〕から えらんで（　）に書く。ことばは 同じものを1回だけ出す
-      const words = rng.shuffle([...new Set([...it.ans, ...it.dummy])]);
+      const optN = p && p.opts !== undefined ? p.opts : 4;
+      // ★3:〔ことば〕を出さずに書いて答える。★1:まぎらわしいことばを1つだけ
+      if (optN === 0 && it.ans.length >= 2) return { text: `${kids ? "（　）に あう ことばを かきましょう。" : "（　）にあてはまることばを書きましょう。"}[[br]]${it.q}`.replace(/（　）に/, "（ ）に"), a: it.ans.join("、"), wide: true };
+      const words = rng.shuffle([...new Set([...it.ans, ...(optN === 3 ? rng.shuffle(it.dummy).slice(0, 1) : it.dummy)])]);
       return { text: `${kids ? "あう ことばを、したの 〔　〕から えらんで かきましょう。" : "あてはまることばを、下の〔　〕からえらんで書きましょう。"}[[br]]${it.q}[[br]]〔 ${words.join(kids ? " ・ " : "・")} 〕`, a: it.ans.join("、"), wide: true };
     }
     if (it.type === "choice") {
-      const opts = rng.shuffle([it.ok, ...it.ng]);
+      // ★3:「どれ」とたずねていない短い答えは、選択肢なしで書いて答える。★1:選択肢を3つまで
+      const optN = p && p.opts !== undefined ? p.opts : 4;
+      if (optN === 0 && !/どれ|どちら|えらび/.test(noRuby(it.q)) && [...noRuby(it.ok)].length <= 14) return { text: it.q, a: it.ok, written: true };
+      const ng = optN === 3 ? rng.shuffle(it.ng).slice(0, 2) : it.ng;
+      const opts = rng.shuffle([it.ok, ...ng]);
       return { text: `${it.q}[[br]]${optLine(opts, kids)}`, a: LET[opts.indexOf(it.ok)], wide: true };
     }
     // ならべる問題:ばらばらにして記号をつけ、正しい順の記号を答える
@@ -112,9 +120,237 @@ var RK = (() => {
     return out.length ? out.join("") : def || "";
   }
 
+  // ===== 書いて答える問題に、難易度に合わせて選択肢をつける =====
+  // 同じ小単元のほかの問題の答えを、まちがいの選択肢にする
+  const shortAns = (a) => noRuby(a).replace(/\(.*?\)|（.*?）/g, "").trim();
+  function candidatesOf(items) {
+    const out = [];
+    for (const it of items) {
+      if (it.type === "qa") out.push(it.a);
+      else if (it.type === "choice") out.push(it.ok, ...it.ng);
+      else if (it.type === "bank") out.push(...it.ans, ...it.dummy);
+    }
+    const seen = new Set();
+    return out.filter((a) => {
+      const k = shortAns(a);
+      if (!k || /、|，|,/.test(k) || [...k].length > 28 || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+  const isNum = (s) => /^[0-9０-９.約〜−-]/.test(s);
+  // 問いの形で、つける選択肢の種類を決める(合わない問いには つけない)
+  const NAME_Q = /何といい|何という|名前|何ですか|何でしょう|何を|何が|何に|何の|何色|何性|何類|何極|何きょく|どこ|だれ/;
+  const SKIP_Q = /か、|なぜ|どうして|理由|どのように|どうします|どうすれば|どうしたら|書きましょう|答えましょう|ちがい|1つ/;
+  const CHANGE = [["大きくなる", "小さくなる"], ["ふえる", "へる"], ["高くなる", "低くなる"], ["長くなる", "短くなる"], ["速くなる", "おそくなる"], ["強くなる", "弱くなる"], ["上がる", "下がる"], ["明るくなる", "暗くなる"], ["あたたかくなる", "つめたくなる"], ["重くなる", "軽くなる"], ["多くなる", "少なくなる"], ["大きい", "小さい"], ["高い", "低い"], ["長い", "短い"], ["速い", "おそい"], ["多い", "少ない"], ["強い", "弱い"], ["明るい", "暗い"]];
+  const looksName = (a) => !/(る|い|た|ない|ます|です|だ|れる|する)$/.test(shortAns(a));
+  function changeOpts(okS) {
+    for (const pair of CHANGE) {
+      const k = pair.indexOf(okS);
+      if (k >= 0) return [pair[1 - k], okS === "かわらない" || okS === "変わらない" ? pair[0] : "かわらない"];
+    }
+    if (/^(かわらない|変わらない|同じ)$/.test(okS)) return ["大きくなる", "小さくなる"];
+    return null;
+  }
+  function numOpts(rng, okS) {
+    const m = /(\d+(?:\.\d+)?)/.exec(okS);
+    if (!m) return null;
+    const n = Number(m[1]), dec = (m[1].split(".")[1] || "").length;
+    const fmt = (v) => okS.replace(m[1], String(+v.toFixed(dec)));
+    const cand = [...new Set([n * 2, n / 2, n + (dec ? 0.1 : 1) * (n >= 10 ? 10 : 1), n - (dec ? 0.1 : 1) * (n >= 10 ? 10 : 1), n * 3, n + (dec ? 0.2 : 2)].map((v) => +v.toFixed(dec)).filter((v) => v > 0 && v !== n && (dec || Number.isInteger(v))))];
+    return rng.shuffle(cand).slice(0, 3).map(fmt);
+  }
+  // ことばのなかま(同じなかまのことばを、まちがいの選択肢にする)
+  const FAM = `
+東,西,南,北
+春,夏,秋,冬
+根,くき,葉,花,実,たね,子葉,芽
+めしべ,おしべ,花びら,がく,子房,胚珠,柱頭,やく
+頭,むね,はら,しょっかく,あし,はね
+たまご,よう虫,さなぎ,成虫,ヤゴ
+食道,胃,小腸,大腸,かん臓,じん臓,肺,心臓
+食道,胃,小腸,大腸,肝臓,じん臓,肺,心臓,すい臓
+酸素,二酸化炭素,ちっ素,水素,水じょう気
+酸素,二酸化炭素,窒素,水素,アンモニア,塩素
+動脈,静脈,毛細血管
+赤血球,白血球,血小板,血しょう
+アミラーゼ,ペプシン,リパーゼ,トリプシン
+ブドウ糖,アミノ酸,脂肪酸,デンプン
+固体,液体,気体
+酸性,中性,アルカリ性
+N極,S極
+Nきょく,Sきょく
+直列,並列
+直列つなぎ,へい列つなぎ
+アンペア,ボルト,オーム,ワット,ジュール,パスカル,ニュートン,ヘルツ
+積乱雲,乱層雲,巻雲,積雲,層雲
+積らん雲,らんそう雲,けん雲,積雲
+寒冷前線,温暖前線,閉そく前線,停滞前線,梅雨前線
+シベリア気団,小笠原気団,オホーツク海気団
+高気圧,低気圧
+安山岩,玄武岩,流紋岩,花こう岩,はんれい岩,閃緑岩
+れき岩,砂岩,泥岩,石灰岩,チャート,凝灰岩
+砂岩,でい岩,れき岩,石灰岩
+長石,石英,黒雲母,角閃石,輝石
+火山岩,深成岩,堆積岩,火成岩
+斑状組織,等粒状組織
+震源,震央,震度,マグニチュード
+初期微動,主要動,余震
+P波,S波
+しん食,運ぱん,たい積
+風化,侵食,運搬,堆積
+示相化石,示準化石
+古生代,中生代,新生代
+反射,屈折,全反射
+実像,虚像
+焦点,光軸,光源
+振幅,振動数,波長
+重力,垂直抗力,摩擦力,弾性力,磁力,浮力
+支点,力点,作用点
+魚類,両生類,は虫類,鳥類,哺乳類
+胎生,卵生
+恒温動物,変温動物
+脊椎動物,無脊椎動物,節足動物,軟体動物
+被子植物,裸子植物,シダ植物,コケ植物,種子植物
+単子葉類,双子葉類,離弁花類,合弁花類
+平行脈,網状脈
+主根と側根,ひげ根
+核,葉緑体,細胞壁,細胞膜,液胞
+組織,器官,個体,細胞
+単細胞生物,多細胞生物
+道管,師管,維管束,気孔,孔辺細胞,根毛
+光合成,呼吸,蒸散
+中枢神経,末しょう神経,感覚神経,運動神経
+網膜,鼓膜,水晶体,こうさい
+分解,化合,酸化,還元,燃焼,中和
+熱分解,電気分解
+単体,化合物,混合物
+原子,分子,イオン,電子,陽子,中性子,原子核
+発熱反応,吸熱反応
+陽イオン,陰イオン
+電解質,非電解質
+H,O,C,N,Fe,Cu,Na,Mg,Ag,Zn,S,Cl
+H₂O,CO₂,O₂,H₂,N₂,NH₃,NaCl,CuO
+溶質,溶媒,溶液
+融点,沸点,露点
+蒸留,ろ過,再結晶
+飽和水溶液,溶解度,溶解度曲線
+体細胞分裂,減数分裂
+有性生殖,無性生殖,栄養生殖
+顕性形質,潜性形質,対立形質
+遺伝子,染色体,DNA,核
+等速直線運動,自由落下
+位置エネルギー,運動エネルギー,力学的エネルギー,熱エネルギー,電気エネルギー,化学エネルギー
+伝導,対流,放射
+自転,公転
+日周運動,年周運動
+夏至,冬至,春分,秋分
+日食,月食
+新月,満月,上げんの月,下げんの月,三日月
+恒星,惑星,衛星,小惑星
+水星,金星,地球,火星,木星,土星,天王星,海王星
+よいの明星,明けの明星
+太陽系,銀河系
+地球型惑星,木星型惑星
+生産者,消費者,分解者
+食物連鎖,食物網
+磁界,磁力線,電磁誘導,誘導電流
+直流,交流
+静電気,放電,真空放電
+陰極線,放射線
+化石燃料,再生可能エネルギー,バイオマス
+快晴,晴れ,くもり,雨,雪
+気団,前線,前線面
+上昇気流,下降気流
+季節風,偏西風
+圧力,大気圧,重力
+発芽,受粉,受精
+受精卵,精子,卵
+子宮,羊水,へそのお,たいばん
+コイル,電磁石,じしゃく,モーター
+ほね,きん肉,関節
+じょう発,ふっとう,水じょう気
+回路,金ぞく
+検流計,電流計,電圧計
+百葉箱,温度計,方位じしん,虫めがね,台ばかり
+でんぷん,ヨウ素液,石灰水
+地層,化石,火山灰,断層
+れき,すな,どろ
+食物連さ,呼吸,消化
+消化,吸収,呼吸
+はく動,脈はく
+蒸散,気孔,呼吸
+てこ,支点,ふりこ
+電流,電圧,抵抗,電力
+熱量,電力量,電力
+感覚器官,反射,けん
+ふん火,断層,地しん,よう岩,つなみ
+しりびれ,せびれ,むなびれ,おびれ
+おす,めす
+受精,受粉,発芽
+回路図,電流計,電圧計
+惑星,恒星,衛星
+ルーペ,双眼実体顕微鏡,顕微鏡
+対物レンズ,接眼レンズ,反射鏡,ステージ
+有機物,無機物,金属
+水上置換法,上方置換法,下方置換法
+マグマ,溶岩,火山灰,鉱物
+光源,音源
+天球,黄道,南中
+月の満ち欠け,日食,月食
+二次電池,一次電池,燃料電池
+化石,示相化石,示準化石
+蓄電,発電,放電
+コンデンサー,発光ダイオード,豆電球,モーター
+電灯,電熱線,せん風機,スピーカー
+地球温暖化,リサイクル
+晴れ,くもり,雨
+`.trim().split("\n").map((l) => l.split(",").map((w) => noRuby(w).trim()));
+  // 選択肢をつけられる問題か(★1 では、なるべく選んで答える問題を出す)
+  function optionable(it, cands) {
+    if (it.type !== "qa") return true;
+    const fake = { next: () => 0.5, int: (a) => a, pick: (x) => x[0], shuffle: (x) => x.slice() };
+    const r = withOptions({ text: "", a: "" }, it, fake, { opts: 3 }, cands, false);
+    return r.a !== "";
+  }
+  function withOptions(r, it, rng, p, cands, kids) {
+    if (it.type !== "qa" || !p || !p.opts) return r;
+    const ok = String(it.a), okS = shortAns(ok), q = noRuby(it.q);
+    if (!okS || /、/.test(okS) || [...okS].length > 18 || /（[　 ]{2,}）/.test(it.q) || SKIP_Q.test(q)) return r;
+    let ng = null;
+    if (/\d/.test(okS) && isNum(okS) && [...okS].length <= 10) ng = numOpts(rng, okS);
+    else if (changeOpts(okS)) ng = changeOpts(okS);
+    else {
+      const fams = FAM.filter((f) => f.includes(okS));
+      if (fams.length) {
+        // いちばん合うなかま(まちがいが3つ以上とれるもの)を使う。同じ意味のことば(ちっ素・窒素など)がまざらないように、なかまはまぜない
+        const pick = fams.find((f) => f.filter((w) => w !== okS && !q.includes(w)).length >= Math.max(2, (p.opts || 3) - 1)) || fams[0];
+        ng = pick.filter((w) => w !== okS && !q.includes(w));
+      } else if (/^c\dr\./.test(it.id || "") && NAME_Q.test(q) && looksName(ok) && [...okS].length <= 10 && !/ところ|とき|から|ため|こと|よう/.test(okS)) {
+        // 中学:同じ小単元のことばの答えを、まちがいの選択肢にする
+        const L = [...okS].length, ascii = /^[\x20-\x7e₀-₉⁺⁻²³→＋]+$/.test(okS);
+        const pool = cands.filter((c) => {
+          const cs = shortAns(c);
+          return cs !== okS && looksName(c) && [...cs].length <= 10 && !isNum(cs) && ascii === /^[\x20-\x7e₀-₉⁺⁻²³→＋]+$/.test(cs) && !cs.includes(okS) && !okS.includes(cs) && !q.includes(cs) && !/ところ|とき|から|ため|こと|よう/.test(cs);
+        });
+        ng = rng.shuffle(pool).sort((a, b) => Math.abs([...shortAns(a)].length - L) - Math.abs([...shortAns(b)].length - L)).slice(0, 4).map((c) => c.replace(/\(.*?\)|（.*?）/g, "").trim());
+      }
+    }
+    if (!ng) return r;
+    ng = rng.shuffle(ng).slice(0, p.opts - 1);
+    // 2つでひと組のことば(P波・S波、直列・並列など)は、2択でもよい
+    if (ng.length < 1 || (ng.length < 2 && !FAM.some((f) => f.includes(okS)))) return r;
+    const okText = ok.replace(/\(.*?\)|（.*?）/g, "").trim();
+    const opts = rng.shuffle([okText, ...ng]);
+    return { text: `${it.q}[[br]]${optLine(opts, kids)}`, a: LET[opts.indexOf(okText)], wide: true };
+  }
+
   // ===== ことば・しくみの問題 =====
   function bank(id, src, o = {}) {
     const items = parse(src);
+    for (const it of items) it.id = id;
+    const cands = candidatesOf(items);
+    for (const it of items) it.optable = optionable(it, cands);
     return {
       id,
       instruction: o.inst === undefined ? "次の問いに答えましょう。" : o.inst,
@@ -123,8 +359,12 @@ var RK = (() => {
       generate(rng, p, ctx) {
         let pool = items.filter((x) => x.lv <= p.max);
         if (!pool.length) pool = items;
+        if (p.opts === 3) {
+          const op = pool.filter((x) => x.optable);
+          if (op.length >= 4) pool = op;
+        }
         const it = pickW(rng, pool, p.max);
-        const r = render(it, rng, o.kids || /^s\d\./.test(id));
+        const r = withOptions(render(it, rng, o.kids || /^s\d\./.test(id), p), it, rng, p, cands, o.kids || /^s\d\./.test(id));
         // 問題を全部使いきったら、同じ問題も出せるようにする(round)
         const round = ctx && Number.isInteger(ctx.index) ? Math.floor(ctx.index / pool.length) : 0;
         const pic = o.pic === false || !picScope(id) ? "" : picOf(it.q, o.pic || PIC_DEF[id]);

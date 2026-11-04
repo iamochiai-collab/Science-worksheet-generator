@@ -428,9 +428,16 @@ table.data.dense th, table.data.dense td { padding: 3pt 4pt; min-width: 26pt; }
 /* 理科:1年(と特別支援の小学部)も、長い文は分かち書きのところで折り返す */
 .sheet.grade-1 .item-body { white-space: normal; }
 /* 理科:問題のよこのイラスト */
+/* 理科:1ページの問題をふやすため、文字・答えの四角・イラストを少し小さく(1年・小学部は大きいまま) */
+.sheet:not(.grade-1) .item-body { font-size: 14pt; letter-spacing: 0.8pt; line-height: 1.6; }
+.items.cols-1 .item-head { flex-wrap: nowrap; align-items: flex-start; }
+.sheet:not(.grade-1) .abox.ans { height: 9mm; }
+.sheet:not(.grade-1) .items { gap: 6pt 16pt; }
 .item.has-pic { position: relative; padding-right: 30mm; min-height: 24mm; }
+.sheet:not(.grade-1) .item.has-pic { padding-right: 21mm; min-height: 16mm; }
 .item-pic { position: absolute; right: 0; top: 1mm; width: 26mm; height: 22mm; display: flex; align-items: center; justify-content: center; gap: 0.5mm; flex-wrap: nowrap; font-size: 24pt; line-height: 1; border: 1pt solid #cfe3ea; border-radius: 3mm; background: #fbfdfe; letter-spacing: 0; }
 .item-pic.two { font-size: 22pt; }
+.sheet:not(.grade-1) .item-pic { width: 18mm; height: 15mm; font-size: 17pt; border-radius: 2mm; }
 .sheet.grade-7 .item-body, .sheet.grade-8 .item-body, .sheet.grade-9 .item-body { font-size: 14.5pt; letter-spacing: 0.3pt; }
 .sheet.grade-10 .item-body, .sheet.grade-11 .item-body, .sheet.grade-12 .item-body, .sheet.grade-13 .item-body, .sheet.grade-14 .item-body, .sheet.grade-15 .item-body { font-size: 13.5pt; letter-spacing: 0.2pt; }
 .sheet.grade-1 .item.has-figure .item-body { font-size: 17pt; letter-spacing: 1pt; line-height: 1.8; }
@@ -32949,7 +32956,7 @@ svg .keyd { fill: var(--key, #ef7d00); font-weight: bold; }
   var KINDS9 = {
     // sheetLabel はプリントの見出し用({漢字|かな} の記法。学年の配当漢字に合わせて表示)
     drill: { label: "計算問題", sheetLabel: "{計算|けいさん}{問題|もんだい}", counts: [6, 10, 15], defaultCount: 10 },
-    word: { label: "基本問題", sheetLabel: "{基本|きほん}{問題|もんだい}", counts: [4, 6, 8, 10], defaultCount: 6 },
+    word: { label: "基本問題", sheetLabel: "{基本|きほん}{問題|もんだい}", counts: [6, 10, 15, 20], defaultCount: 10 },
     figure: { label: "図・実験", sheetLabel: "{図|ず}・{実験|じっけん}", counts: [1, 2, 3, 4], defaultCount: 2 },
     // 記録シート(くらしの数学):自分の記録・調べたことを書く。1まいに 1つずつ、ぜんぶ出す
     record: { label: "記録シート", sheetLabel: "{記録|きろく}シート", counts: null, defaultCount: null },
